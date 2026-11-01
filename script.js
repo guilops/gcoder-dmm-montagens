@@ -1,0 +1,462 @@
+"use strict";
+
+const config = window.DMM_CONFIG || {};
+const supabaseReady = Boolean(
+  config.supabaseUrl &&
+  config.supabaseAnonKey &&
+  window.supabase &&
+  window.supabase.createClient
+);
+const db = supabaseReady
+  ? window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)
+  : null;
+const form = document.querySelector("#booking-form");
+const bookingDate = form.elements.booking_date;
+const bookingTime = document.querySelector("#booking-time");
+const feedback = document.querySelector("#booking-feedback");
+const adminOverlay = document.querySelector("#admin-overlay");
+const loginForm = document.querySelector("#login-form");
+const loginFeedback = document.querySelector("#login-feedback");
+const dashboard = document.querySelector("#dashboard");
+const loginSection = document.querySelector("#admin-login");
+const calendarGrid = document.querySelector("#calendar-grid");
+const bookingList = document.querySelector("#booking-list");
+const monthNames = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" });
+const dateNames = new Intl.DateTimeFormat("pt-BR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+const dayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+const slots = ["08:00", "09:30", "11:00", "13:30", "15:00", "16:30"];
+const bookingFields = "id,customer_name,customer_phone,customer_email,service,details,booking_date,booking_time,status";
+let visibleMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+let selectedDate = dateToISO(new Date());
+let monthBookings = [];
+let toastTimer;
+let clientBookingsEnabled = false;
+
+function dateToISO(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function setFeedback(element, message, isSuccess = false) {
+  element.textContent = message;
+  element.classList.toggle("success", isSuccess);
+}
+
+function showToast(message) {
+  const toast = document.querySelector("#toast");
+  toast.textContent = message;
+  toast.classList.add("visible");
+  window.clearTimeout(toastTimer);
+  toastTimer = window.setTimeout(() => toast.classList.remove("visible"), 3400);
+}
+
+function formatWhatsappNumber(phone) {
+  const digits = phone.replace(/\D/g, "");
+  return digits.startsWith("55") ? digits : `55${digits}`;
+}
+
+function setBookingAvailability(enabled) {
+  clientBookingsEnabled = enabled;
+  for (const element of form.querySelectorAll("input, select, textarea, button")) {
+    element.disabled = !enabled;
+  }
+  bookingTime.innerHTML = enabled
+    ? '<option value="">Escolha uma data primeiro</option>'
+    : '<option value="">Agenda online em configuração</option>';
+  if (!enabled) {
+    setFeedback(feedback, "Os agendamentos online serão ativados após a configuração segura do serviço de agenda.");
+  }
+}
+
+function setupContactLinks() {
+  const phone = (config.whatsappNumber || "").replace(/\D/g, "");
+  const contactEmail = (config.contactEmail || "").trim();
+  for (const link of document.querySelectorAll("[data-whatsapp]")) {
+    if (phone) {
+      link.href = `https://wa.me/${phone}`;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.setAttribute("aria-label", "Conversar pelo WhatsApp");
+    } else {
+      link.hidden = true;
+    }
+  }
+  for (const link of document.querySelectorAll("[data-email]")) {
+    if (contactEmail) {
+      link.href = `mailto:${contactEmail}`;
+    } else {
+      link.hidden = true;
+    }
+  }
+  for (const area of document.querySelectorAll("[data-area]")) {
+    area.textContent = config.serviceArea || "Consulte a disponibilidade para a sua região.";
+  }
+}
+
+async function loadAvailableSlots(date) {
+  bookingTime.disabled = true;
+  bookingTime.innerHTML = '<option value="">Consultando horários...</option>';
+  const { data, error } = await db.functions.invoke("booking-slots", { body: { date } });
+  if (error) {
+    bookingTime.innerHTML = '<option value="">Não foi possível carregar os horários</option>';
+    setFeedback(feedback, "Não foi possível consultar a agenda agora. Tente novamente em instantes ou fale pelo WhatsApp.");
+    return;
+  }
+  if (!Array.isArray(data?.availableSlots)) {
+    bookingTime.innerHTML = '<option value="">Agenda indisponível</option>';
+    setFeedback(feedback, "A agenda retornou uma resposta inválida. Avise a DMM Montagens para verificar a configuração.");
+    return;
+  }
+  bookingTime.innerHTML = "";
+  if (data.availableSlots.length === 0) {
+    bookingTime.add(new Option("Sem horários disponíveis", ""));
+    setFeedback(feedback, "Não há horários livres neste dia. Escolha outra data.");
+    return;
+  }
+  bookingTime.add(new Option("Escolha um horário", ""));
+  for (const slot of data.availableSlots) {
+    bookingTime.add(new Option(slot, slot));
+  }
+  bookingTime.disabled = false;
+  setFeedback(feedback, "");
+}
+
+async function submitBooking(event) {
+  event.preventDefault();
+  if (!clientBookingsEnabled) {
+    setFeedback(feedback, "A agenda online ainda não foi configurada. Entre em contato pelo WhatsApp.");
+    return;
+  }
+  const data = Object.fromEntries(new FormData(form).entries());
+  const submitButton = form.querySelector('[type="submit"]');
+  submitButton.disabled = true;
+  submitButton.textContent = "Enviando pedido...";
+  setFeedback(feedback, "");
+  const { data: response, error } = await db.functions.invoke("create-booking", { body: data });
+  submitButton.disabled = false;
+  submitButton.innerHTML = 'Solicitar agendamento <span aria-hidden="true">↗</span>';
+  if (error) {
+    let responseBody;
+    try {
+      responseBody = await error.context?.json();
+    } catch (parseError) {
+      console.error("Could not read the booking error response:", parseError);
+    }
+    setFeedback(feedback, responseBody?.error || "Não foi possível enviar seu pedido. Confira sua conexão e tente novamente.");
+    if (bookingDate.value) await loadAvailableSlots(bookingDate.value);
+    return;
+  }
+  if (response?.error) {
+    setFeedback(feedback, response.error);
+    if (response.code === "slot_taken" && bookingDate.value) await loadAvailableSlots(bookingDate.value);
+    return;
+  }
+  if (!response?.bookingId) {
+    setFeedback(feedback, "A agenda retornou uma resposta inválida. Entre em contato com a DMM Montagens antes de tentar novamente.");
+    return;
+  }
+  form.reset();
+  bookingTime.innerHTML = '<option value="">Escolha uma data primeiro</option>';
+  bookingTime.disabled = true;
+  if (response.notificationsSent) {
+    setFeedback(feedback, "Pedido enviado! A DMM Montagens vai confirmar seu horário pelo WhatsApp ou e-mail.", true);
+  } else {
+    setFeedback(feedback, "Pedido salvo, mas houve um problema ao enviar os e-mails. Fale diretamente com a DMM Montagens para confirmar o horário.");
+  }
+}
+
+function formatDateTitle(date) {
+  const parsed = new Date(`${date}T12:00:00`);
+  const value = dateNames.format(parsed);
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function appendBookingField(parent, tag, className, text) {
+  const element = document.createElement(tag);
+  if (className) element.className = className;
+  element.textContent = text;
+  parent.append(element);
+  return element;
+}
+
+function renderBookingList() {
+  const dayBookings = monthBookings
+    .filter((booking) => booking.booking_date === selectedDate)
+    .sort((left, right) => left.booking_time.localeCompare(right.booking_time));
+  document.querySelector("#selected-day-title").textContent = formatDateTitle(selectedDate);
+  document.querySelector("#day-count").textContent =
+    `${dayBookings.length} ${dayBookings.length === 1 ? "compromisso" : "compromissos"}`;
+  bookingList.replaceChildren();
+  if (dayBookings.length === 0) {
+    appendBookingField(bookingList, "p", "empty-day", "Nenhum agendamento para este dia.");
+    return;
+  }
+  for (const booking of dayBookings) {
+    const card = document.createElement("article");
+    card.className = "admin-booking";
+    appendBookingField(card, "span", "admin-booking-time", booking.booking_time);
+    const details = document.createElement("div");
+    details.className = "admin-booking-main";
+    appendBookingField(details, "strong", "", booking.customer_name);
+    appendBookingField(details, "small", "", `${booking.service}${booking.details ? ` · ${booking.details}` : ""}`);
+    card.append(details);
+    const contact = document.createElement("div");
+    contact.className = "admin-booking-contact";
+    const phoneLink = document.createElement("a");
+    phoneLink.href = `https://wa.me/${formatWhatsappNumber(booking.customer_phone)}`;
+    phoneLink.target = "_blank";
+    phoneLink.rel = "noopener noreferrer";
+    phoneLink.textContent = booking.customer_phone;
+    contact.append(phoneLink);
+    const emailLink = document.createElement("a");
+    emailLink.href = `mailto:${booking.customer_email}`;
+    emailLink.textContent = booking.customer_email;
+    contact.append(emailLink);
+    card.append(contact);
+    const actions = document.createElement("div");
+    actions.className = "admin-booking-actions";
+    appendBookingField(actions, "span", `booking-status ${booking.status}`, statusLabel(booking.status));
+    const select = document.createElement("select");
+    select.className = "status-select";
+    select.setAttribute("aria-label", `Alterar status do agendamento de ${booking.customer_name}`);
+    for (const [value, label] of [
+      ["pending", "Aguardando"],
+      ["confirmed", "Confirmado"],
+      ["completed", "Concluído"],
+      ["cancelled", "Cancelado"],
+    ]) {
+      select.add(new Option(label, value, false, booking.status === value));
+    }
+    select.addEventListener("change", () => updateBookingStatus(booking.id, select.value, select));
+    actions.append(select);
+    card.append(actions);
+    bookingList.append(card);
+  }
+}
+
+function statusLabel(status) {
+  return {
+    pending: "Aguardando confirmação",
+    confirmed: "Confirmado",
+    completed: "Concluído",
+    cancelled: "Cancelado",
+  }[status] || "Status desconhecido";
+}
+
+function renderCalendar() {
+  calendarGrid.replaceChildren();
+  for (const day of dayNames) appendBookingField(calendarGrid, "span", "calendar-cell weekday", day);
+  const year = visibleMonth.getFullYear();
+  const month = visibleMonth.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const offset = (firstDay.getDay() + 6) % 7;
+  const gridStart = new Date(year, month, 1 - offset);
+  const today = dateToISO(new Date());
+  document.querySelector("#calendar-month").textContent = monthNames.format(visibleMonth);
+  const bookingsByDate = new Map();
+  for (const booking of monthBookings) {
+    const group = bookingsByDate.get(booking.booking_date) || [];
+    group.push(booking);
+    bookingsByDate.set(booking.booking_date, group);
+  }
+  for (let index = 0; index < 42; index += 1) {
+    const date = new Date(gridStart.getFullYear(), gridStart.getMonth(), gridStart.getDate() + index);
+    const iso = dateToISO(date);
+    const dayBookings = bookingsByDate.get(iso) || [];
+    const cell = document.createElement("button");
+    cell.type = "button";
+    cell.className = "calendar-cell";
+    if (date.getMonth() !== month) cell.classList.add("outside");
+    if (iso === today) cell.classList.add("today");
+    if (iso === selectedDate) cell.classList.add("selected");
+    cell.setAttribute("aria-label", `${formatDateTitle(iso)}${dayBookings.length ? `, ${dayBookings.length} agendamentos` : ""}`);
+    appendBookingField(cell, "span", "calendar-date", String(date.getDate()));
+    if (dayBookings.length) {
+      const pending = dayBookings.some((booking) => booking.status === "pending");
+      appendBookingField(cell, "span", `calendar-dot${pending ? " pending" : ""}`, "");
+      if (dayBookings.length > 1) appendBookingField(cell, "span", "calendar-booking-count", `${dayBookings.length} horários`);
+    }
+    cell.addEventListener("click", () => {
+      selectedDate = iso;
+      if (date.getMonth() !== visibleMonth.getMonth()) {
+        visibleMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+        refreshDashboard();
+        return;
+      }
+      renderCalendar();
+      renderBookingList();
+    });
+    calendarGrid.append(cell);
+  }
+}
+
+async function updateBookingStatus(id, status, select) {
+  select.disabled = true;
+  const { error } = await db.from("bookings").update({ status }).eq("id", id);
+  select.disabled = false;
+  if (error) {
+    showToast(`Não foi possível atualizar o agendamento: ${error.message}`);
+    await refreshDashboard();
+    return;
+  }
+  showToast("Status do agendamento atualizado.");
+  await refreshDashboard();
+}
+
+async function refreshDashboard() {
+  const start = dateToISO(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), 1));
+  const end = dateToISO(new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + 1, 0));
+  const today = dateToISO(new Date());
+  const weekEnd = dateToISO(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000));
+  const activeUntil = dateToISO(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000));
+  const [calendarResult, activeResult] = await Promise.all([
+    db.from("bookings")
+    .select(bookingFields)
+    .gte("booking_date", start)
+    .lte("booking_date", end)
+    .order("booking_date")
+    .order("booking_time"),
+    db.from("bookings")
+      .select("booking_date,status")
+      .gte("booking_date", today)
+      .lte("booking_date", activeUntil),
+  ]);
+  if (calendarResult.error || activeResult.error) {
+    showToast(`Não foi possível carregar a agenda: ${(calendarResult.error || activeResult.error).message}`);
+    return;
+  }
+  monthBookings = calendarResult.data;
+  const activeBookings = activeResult.data.filter((booking) => booking.status !== "cancelled");
+  document.querySelector("#today-count").textContent =
+    activeBookings.filter((booking) => booking.booking_date === today).length;
+  document.querySelector("#pending-count").textContent =
+    activeBookings.filter((booking) => booking.status === "pending").length;
+  document.querySelector("#week-count").textContent =
+    activeBookings.filter((booking) => booking.booking_date <= weekEnd).length;
+  renderCalendar();
+  renderBookingList();
+}
+
+function showAdmin() {
+  adminOverlay.hidden = false;
+  document.querySelector("#main-nav").classList.remove("open");
+  document.querySelector("#menu-toggle").setAttribute("aria-expanded", "false");
+  if (!db) {
+    loginFeedback.textContent = "Configure a conexão segura com a agenda antes de acessar o painel.";
+    return;
+  }
+  db.auth.getSession().then(({ data: { session }, error }) => {
+    if (error) {
+      setFeedback(loginFeedback, `Não foi possível verificar sua sessão: ${error.message}`);
+      return;
+    }
+    if (session) authorizeAdmin(session);
+  });
+}
+
+async function authorizeAdmin(session) {
+  if (!session?.user) return;
+  loginFeedback.textContent = "Verificando acesso...";
+  const { data, error } = await db.from("admins").select("user_id").eq("user_id", session.user.id).maybeSingle();
+  if (error || !data) {
+    if (error) {
+      setFeedback(loginFeedback, `Não foi possível verificar a permissão: ${error.message}`);
+    } else {
+      setFeedback(loginFeedback, "Esta conta não tem acesso ao painel da DMM Montagens.");
+    }
+    await db.auth.signOut();
+    return;
+  }
+  loginSection.hidden = true;
+  dashboard.hidden = false;
+  loginFeedback.textContent = "";
+  await refreshDashboard();
+}
+
+async function handleLogin(event) {
+  event.preventDefault();
+  if (!db) {
+    setFeedback(loginFeedback, "O painel ainda não está configurado. Consulte as instruções de instalação do projeto.");
+    return;
+  }
+  const button = loginForm.querySelector('[type="submit"]');
+  button.disabled = true;
+  setFeedback(loginFeedback, "");
+  const values = new FormData(loginForm);
+  const { data, error } = await db.auth.signInWithPassword({
+    email: values.get("email"),
+    password: values.get("password"),
+  });
+  button.disabled = false;
+  if (error) {
+    setFeedback(loginFeedback, "Não foi possível entrar. Confira o e-mail e a senha.");
+    return;
+  }
+  await authorizeAdmin(data.session);
+}
+
+async function signOut() {
+  const { error } = await db.auth.signOut();
+  if (error) {
+    showToast(`Não foi possível sair: ${error.message}`);
+    return;
+  }
+  dashboard.hidden = true;
+  loginSection.hidden = false;
+  loginForm.reset();
+  setFeedback(loginFeedback, "Sessão encerrada.");
+}
+
+function refreshSelectedMonth(offset) {
+  visibleMonth = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth() + offset, 1);
+  refreshDashboard();
+}
+
+function routeToAdmin() {
+  const isAdmin = window.location.hash === "#admin";
+  adminOverlay.hidden = !isAdmin;
+  if (isAdmin) showAdmin();
+  else {
+    loginSection.hidden = false;
+    dashboard.hidden = true;
+  }
+}
+
+document.querySelector("#year").textContent = String(new Date().getFullYear());
+document.querySelector("#menu-toggle").addEventListener("click", (event) => {
+  const menu = document.querySelector("#main-nav");
+  const isOpen = menu.classList.toggle("open");
+  event.currentTarget.setAttribute("aria-expanded", String(isOpen));
+});
+document.querySelector("#main-nav").addEventListener("click", (event) => {
+  if (event.target.closest("a")) {
+    document.querySelector("#main-nav").classList.remove("open");
+    document.querySelector("#menu-toggle").setAttribute("aria-expanded", "false");
+  }
+});
+form.addEventListener("submit", submitBooking);
+bookingDate.min = dateToISO(new Date());
+bookingDate.addEventListener("change", () => {
+  setFeedback(feedback, "");
+  if (!bookingDate.value || !db) return;
+  void loadAvailableSlots(bookingDate.value);
+});
+loginForm.addEventListener("submit", handleLogin);
+document.querySelector("#signout-button").addEventListener("click", signOut);
+document.querySelector("#previous-month").addEventListener("click", () => refreshSelectedMonth(-1));
+document.querySelector("#next-month").addEventListener("click", () => refreshSelectedMonth(1));
+document.querySelector("#today-button").addEventListener("click", () => {
+  visibleMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  selectedDate = dateToISO(new Date());
+  void refreshDashboard();
+});
+setupContactLinks();
+setBookingAvailability(supabaseReady);
+window.addEventListener("hashchange", routeToAdmin);
+routeToAdmin();
