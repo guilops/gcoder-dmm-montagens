@@ -175,19 +175,19 @@ Deno.serve(async (request) => {
   }).format(utcDay);
   const whatsapp = phone.replace(/\D/g, "");
   const adminMessage = {
-    from: emailFrom,
-    to: [adminEmail],
+    from: emailFrom || "",
+    to: adminEmail ? [adminEmail] : [],
     subject: `Novo pedido de montagem — ${name}`,
     html: `<h2>Novo pedido de agendamento — DMM Montagens</h2><p><strong>Cliente:</strong> ${safeName}</p><p><strong>Telefone:</strong> ${safePhone} (<a href="https://wa.me/${whatsapp}">conversar no WhatsApp</a>)</p><p><strong>E-mail:</strong> ${escapeHtml(email)}</p><p><strong>Serviço:</strong> ${safeService} (${formatDuration(durationMinutes)})</p><p><strong>Data:</strong> ${dateLabel} às ${time}</p><p><strong>Detalhes:</strong> ${safeDetails}</p><p>Acesse o painel da DMM Montagens para confirmar ou ajustar este pedido.</p>`,
   };
   const customerMessage = {
-    from: emailFrom,
+    from: emailFrom || "",
     to: [email],
     subject: "Recebemos seu pedido — DMM Montagens",
     html: `<p>Olá, ${safeName}!</p><p>Seu pedido de <strong>${safeService}</strong> (estimativa de ${formatDuration(durationMinutes)}) para <strong>${dateLabel} às ${time}</strong> foi recebido. O horário ainda depende da confirmação da DMM Montagens.</p><p>Seus detalhes: ${safeDetails}</p><p>A DMM Montagens vai entrar em contato pelo WhatsApp ${safePhone} para combinar o orçamento e confirmar o atendimento.</p><p>Obrigado,<br>DMM Montagens</p>`,
   };
 
-  const deliveryResults = await Promise.all([
+  const [adminDelivery, customerDelivery] = await Promise.all([
     { recipient: "admin", message: adminMessage },
     { recipient: "customer", message: customerMessage },
   ].map(async ({ recipient, message }) => {
@@ -197,8 +197,9 @@ Deno.serve(async (request) => {
         !emailFrom && "EMAIL_FROM",
         recipient === "admin" && !adminEmail && "ADMIN_EMAIL",
       ].filter(Boolean);
-      console.error(`Could not send the ${recipient} booking email. Missing configuration: ${missing.join(", ")}.`);
-      return false;
+      const error = `Segredo ausente no Supabase: ${missing.join(", ")}.`;
+      console.error(`Could not send the ${recipient} booking email. ${error}`);
+      return { sent: false, error };
     }
     try {
       const response = await fetch("https://api.resend.com/emails", {
@@ -210,16 +211,25 @@ Deno.serve(async (request) => {
         body: JSON.stringify(message),
       });
       if (!response.ok) {
-        console.error(`Resend could not send the ${recipient} booking email (${response.status}):`, await response.text());
-        return false;
+        let providerMessage = "";
+        try {
+          const responseBody = await response.json();
+          if (typeof responseBody?.message === "string") providerMessage = responseBody.message;
+        } catch {
+          providerMessage = "";
+        }
+        const error = `Resend retornou HTTP ${response.status}${providerMessage ? `: ${providerMessage}` : "."}`;
+        console.error(`Resend could not send the ${recipient} booking email: ${error}`);
+        return { sent: false, error };
       }
-      return true;
+      return { sent: true, error: null };
     } catch (error) {
-      console.error(`Resend request for the ${recipient} booking email failed:`, error);
-      return false;
+      const reason = error instanceof Error ? error.message : "Falha de conexão com o Resend.";
+      console.error(`Resend request for the ${recipient} booking email failed:`, reason);
+      return { sent: false, error: `Falha de conexão com o Resend: ${reason}` };
     }
   }));
-  const notificationsSent = deliveryResults.every(Boolean);
+  const notificationsSent = adminDelivery.sent && customerDelivery.sent;
   const { error: notificationUpdateError } = await client.from("bookings")
     .update({ notifications_sent: notificationsSent })
     .eq("id", booking.id);
@@ -231,8 +241,12 @@ Deno.serve(async (request) => {
     bookingId: booking.id,
     notificationsSent,
     emailDelivery: {
-      admin: deliveryResults[0],
-      customer: deliveryResults[1],
+      admin: adminDelivery.sent,
+      customer: customerDelivery.sent,
+    },
+    emailErrors: {
+      admin: adminDelivery.error,
+      customer: customerDelivery.error,
     },
   }, 201);
 });
