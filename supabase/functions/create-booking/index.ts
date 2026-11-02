@@ -5,12 +5,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
-const availableSlots = new Set(["08:00", "09:30", "11:00", "13:30", "15:00", "16:30"]);
 const allowedServices = new Set([
-  "Móveis residenciais",
-  "Cozinhas e armários",
-  "Escritório e comércio",
-  "Desmontagem e ajuste",
+  "Móveis em geral",
+  "Armários e cozinhas planejadas",
+  "Desmontagem e remontagem",
   "Outro — vou explicar nos detalhes",
 ]);
 
@@ -67,7 +65,7 @@ Deno.serve(async (request) => {
     phone.replace(/\D/g, "").length < 10 || phone.length > 30 ||
     email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
     !allowedServices.has(service) || details.length > 1200 ||
-    !/^\d{4}-\d{2}-\d{2}$/.test(date) || !availableSlots.has(time)
+    !/^\d{4}-\d{2}-\d{2}$/.test(date) || !isValidSlot(time)
   ) {
     return jsonResponse({ error: "Confira os dados e o horário escolhido e tente novamente." }, 400);
   }
@@ -96,6 +94,55 @@ Deno.serve(async (request) => {
   }
 
   const client = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+  const { data: serviceDuration, error: durationError } = await client.from("service_durations")
+    .select("duration_minutes")
+    .eq("service", service)
+    .single();
+  if (durationError || !serviceDuration) {
+    console.error("Failed to retrieve service duration:", durationError?.message || "No duration was returned.");
+    return jsonResponse({ error: "Não foi possível verificar a duração do serviço." }, 500);
+  }
+  const durationMinutes = serviceDuration.duration_minutes;
+  const { data: blocks, error: blocksError } = await client.from("schedule_blocks")
+    .select("start_time,end_time")
+    .eq("blocked_date", date);
+  if (blocksError) {
+    console.error("Failed to check schedule blocks:", blocksError.message);
+    return jsonResponse({ error: "Não foi possível confirmar a disponibilidade. Tente novamente." }, 500);
+  }
+  const requestedStart = timeToMinutes(time);
+  const requestedEnd = requestedStart + durationMinutes;
+  const isBlocked = blocks.some((block) =>
+    block.start_time === null ||
+    (requestedStart < timeToMinutes(String(block.end_time)) &&
+      requestedEnd > timeToMinutes(String(block.start_time)))
+  );
+  if (isBlocked) {
+    return jsonResponse({
+      code: "slot_taken",
+      error: "Esse horário não está mais disponível. Escolha outro horário.",
+    }, 409);
+  }
+
+  const { data: existingBookings, error: bookingsError } = await client.from("bookings")
+    .select("booking_time,duration_minutes")
+    .eq("booking_date", date)
+    .in("status", ["pending", "confirmed"]);
+  if (bookingsError) {
+    console.error("Failed to check overlapping bookings:", bookingsError.message);
+    return jsonResponse({ error: "Não foi possível confirmar a disponibilidade. Tente novamente." }, 500);
+  }
+  if (existingBookings.some((booking) => {
+    const start = timeToMinutes(booking.booking_time);
+    return requestedStart < start + booking.duration_minutes &&
+      requestedEnd > start;
+  })) {
+    return jsonResponse({
+      code: "slot_taken",
+      error: "Esse horário não está mais disponível. Escolha outro horário.",
+    }, 409);
+  }
+
   const { data: booking, error: insertError } = await client.from("bookings").insert({
     customer_name: name,
     customer_phone: phone,
@@ -104,9 +151,10 @@ Deno.serve(async (request) => {
     details,
     booking_date: date,
     booking_time: time,
+    duration_minutes: durationMinutes,
   }).select("id").single();
 
-  if (insertError?.code === "23505") {
+  if (insertError?.code === "23505" || insertError?.code === "23P01") {
     return jsonResponse({
       code: "slot_taken",
       error: "Esse horário acabou de ser reservado. Escolha outro horário.",
@@ -130,13 +178,13 @@ Deno.serve(async (request) => {
     from: emailFrom,
     to: [adminEmail],
     subject: `Novo pedido de montagem — ${name}`,
-    html: `<h2>Novo pedido de agendamento — DMM Montagens</h2><p><strong>Cliente:</strong> ${safeName}</p><p><strong>Telefone:</strong> ${safePhone} (<a href="https://wa.me/${whatsapp}">conversar no WhatsApp</a>)</p><p><strong>E-mail:</strong> ${escapeHtml(email)}</p><p><strong>Serviço:</strong> ${safeService}</p><p><strong>Data:</strong> ${dateLabel} às ${time}</p><p><strong>Detalhes:</strong> ${safeDetails}</p><p>Acesse o painel da DMM Montagens para confirmar ou ajustar este pedido.</p>`,
+    html: `<h2>Novo pedido de agendamento — DMM Montagens</h2><p><strong>Cliente:</strong> ${safeName}</p><p><strong>Telefone:</strong> ${safePhone} (<a href="https://wa.me/${whatsapp}">conversar no WhatsApp</a>)</p><p><strong>E-mail:</strong> ${escapeHtml(email)}</p><p><strong>Serviço:</strong> ${safeService} (${formatDuration(durationMinutes)})</p><p><strong>Data:</strong> ${dateLabel} às ${time}</p><p><strong>Detalhes:</strong> ${safeDetails}</p><p>Acesse o painel da DMM Montagens para confirmar ou ajustar este pedido.</p>`,
   };
   const customerMessage = {
     from: emailFrom,
     to: [email],
     subject: "Recebemos seu pedido — DMM Montagens",
-    html: `<p>Olá, ${safeName}!</p><p>Seu pedido de <strong>${safeService}</strong> para <strong>${dateLabel} às ${time}</strong> foi recebido. O horário ainda depende da confirmação da DMM Montagens.</p><p>Seus detalhes: ${safeDetails}</p><p>A DMM Montagens vai entrar em contato pelo WhatsApp ${safePhone} para combinar o orçamento e confirmar o atendimento.</p><p>Obrigado,<br>DMM Montagens</p>`,
+    html: `<p>Olá, ${safeName}!</p><p>Seu pedido de <strong>${safeService}</strong> (estimativa de ${formatDuration(durationMinutes)}) para <strong>${dateLabel} às ${time}</strong> foi recebido. O horário ainda depende da confirmação da DMM Montagens.</p><p>Seus detalhes: ${safeDetails}</p><p>A DMM Montagens vai entrar em contato pelo WhatsApp ${safePhone} para combinar o orçamento e confirmar o atendimento.</p><p>Obrigado,<br>DMM Montagens</p>`,
   };
 
   const deliveryResults = await Promise.all([adminMessage, customerMessage].map(async (message) => {
@@ -180,6 +228,24 @@ function brazilToday() {
     month: "2-digit",
     day: "2-digit",
   }).format(new Date());
+}
+
+function timeToMinutes(value: string) {
+  const [hours, minutes] = value.slice(0, 5).split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function formatDuration(minutes: number) {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (!hours) return `${remainingMinutes} min`;
+  return remainingMinutes ? `${hours}h ${remainingMinutes}min` : `${hours}h`;
+}
+
+function isValidSlot(value: string) {
+  if (!/^(0[8-9]|1[0-6]):(00|30)$/.test(value)) return false;
+  const minutes = timeToMinutes(value);
+  return minutes <= 16 * 60 + 30;
 }
 
 function brazilCurrentTime() {

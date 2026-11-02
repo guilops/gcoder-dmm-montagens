@@ -11,7 +11,8 @@ const db = supabaseReady
   ? window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey)
   : null;
 const form = document.querySelector("#booking-form");
-const bookingDate = form.elements.booking_date;
+const bookingDate = form?.elements.booking_date;
+const bookingService = form?.elements.service;
 const bookingTime = document.querySelector("#booking-time");
 const feedback = document.querySelector("#booking-feedback");
 const adminOverlay = document.querySelector("#admin-overlay");
@@ -28,11 +29,17 @@ const dateNames = new Intl.DateTimeFormat("pt-BR", {
   month: "long",
 });
 const dayNames = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-const slots = ["08:00", "09:30", "11:00", "13:30", "15:00", "16:30"];
-const bookingFields = "id,customer_name,customer_phone,customer_email,service,details,booking_date,booking_time,status";
+const services = [
+  "Móveis em geral",
+  "Armários e cozinhas planejadas",
+  "Desmontagem e remontagem",
+  "Outro — vou explicar nos detalhes",
+];
+const bookingFields = "id,customer_name,customer_phone,customer_email,service,details,booking_date,booking_time,duration_minutes,status";
 let visibleMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let selectedDate = dateToISO(new Date());
 let monthBookings = [];
+let monthBlocks = [];
 let toastTimer;
 let clientBookingsEnabled = false;
 
@@ -62,6 +69,7 @@ function formatWhatsappNumber(phone) {
 }
 
 function setBookingAvailability(enabled) {
+  if (!form) return;
   clientBookingsEnabled = enabled;
   for (const element of form.querySelectorAll("input, select, textarea, button")) {
     element.disabled = !enabled;
@@ -99,10 +107,23 @@ function setupContactLinks() {
   }
 }
 
-async function loadAvailableSlots(date) {
+function formatDuration(minutes) {
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (!hours) return `${remainingMinutes} min`;
+  return remainingMinutes ? `${hours}h ${remainingMinutes}min` : `${hours}h`;
+}
+
+async function loadAvailableSlots(date, service) {
+  if (!service) {
+    bookingTime.disabled = true;
+    bookingTime.innerHTML = '<option value="">Escolha o serviço primeiro</option>';
+    setFeedback(feedback, "Selecione o serviço para consultar os horários e a duração.");
+    return;
+  }
   bookingTime.disabled = true;
   bookingTime.innerHTML = '<option value="">Consultando horários...</option>';
-  const { data, error } = await db.functions.invoke("booking-slots", { body: { date } });
+  const { data, error } = await db.functions.invoke("booking-slots", { body: { date, service } });
   if (error) {
     bookingTime.innerHTML = '<option value="">Não foi possível carregar os horários</option>';
     setFeedback(feedback, "Não foi possível consultar a agenda agora. Tente novamente em instantes ou fale pelo WhatsApp.");
@@ -114,12 +135,15 @@ async function loadAvailableSlots(date) {
     return;
   }
   bookingTime.innerHTML = "";
+  const durationLabel = Number.isInteger(data.durationMinutes)
+    ? `Escolha um horário · ${formatDuration(data.durationMinutes)}`
+    : "Escolha um horário";
   if (data.availableSlots.length === 0) {
     bookingTime.add(new Option("Sem horários disponíveis", ""));
     setFeedback(feedback, "Não há horários livres neste dia. Escolha outra data.");
     return;
   }
-  bookingTime.add(new Option("Escolha um horário", ""));
+  bookingTime.add(new Option(durationLabel, ""));
   for (const slot of data.availableSlots) {
     bookingTime.add(new Option(slot, slot));
   }
@@ -149,12 +173,14 @@ async function submitBooking(event) {
       console.error("Could not read the booking error response:", parseError);
     }
     setFeedback(feedback, responseBody?.error || "Não foi possível enviar seu pedido. Confira sua conexão e tente novamente.");
-    if (bookingDate.value) await loadAvailableSlots(bookingDate.value);
+    if (bookingDate.value) await loadAvailableSlots(bookingDate.value, bookingService.value);
     return;
   }
   if (response?.error) {
     setFeedback(feedback, response.error);
-    if (response.code === "slot_taken" && bookingDate.value) await loadAvailableSlots(bookingDate.value);
+    if (response.code === "slot_taken" && bookingDate.value) {
+      await loadAvailableSlots(bookingDate.value, bookingService.value);
+    }
     return;
   }
   if (!response?.bookingId) {
@@ -162,7 +188,7 @@ async function submitBooking(event) {
     return;
   }
   form.reset();
-  bookingTime.innerHTML = '<option value="">Escolha uma data primeiro</option>';
+  bookingTime.innerHTML = '<option value="">Escolha um serviço e uma data primeiro</option>';
   bookingTime.disabled = true;
   if (response.notificationsSent) {
     setFeedback(feedback, "Pedido enviado! A DMM Montagens vai confirmar seu horário pelo WhatsApp ou e-mail.", true);
@@ -195,7 +221,6 @@ function renderBookingList() {
   bookingList.replaceChildren();
   if (dayBookings.length === 0) {
     appendBookingField(bookingList, "p", "empty-day", "Nenhum agendamento para este dia.");
-    return;
   }
   for (const booking of dayBookings) {
     const card = document.createElement("article");
@@ -204,7 +229,7 @@ function renderBookingList() {
     const details = document.createElement("div");
     details.className = "admin-booking-main";
     appendBookingField(details, "strong", "", booking.customer_name);
-    appendBookingField(details, "small", "", `${booking.service}${booking.details ? ` · ${booking.details}` : ""}`);
+    appendBookingField(details, "small", "", `${booking.service} · ${formatDuration(booking.duration_minutes)}${booking.details ? ` · ${booking.details}` : ""}`);
     card.append(details);
     const contact = document.createElement("div");
     contact.className = "admin-booking-contact";
@@ -238,6 +263,83 @@ function renderBookingList() {
     card.append(actions);
     bookingList.append(card);
   }
+  const dayBlocks = monthBlocks.filter((block) => block.blocked_date === selectedDate);
+  for (const block of dayBlocks) {
+    const card = document.createElement("article");
+    card.className = "admin-booking schedule-block";
+    appendBookingField(card, "span", "admin-booking-time", block.start_time
+      ? `${String(block.start_time).slice(0, 5)}–${String(block.end_time).slice(0, 5)}`
+      : "Dia todo");
+    appendBookingField(card, "strong", "admin-booking-main", "Horário bloqueado");
+    const removeButton = document.createElement("button");
+    removeButton.className = "button button-outline";
+    removeButton.type = "button";
+    removeButton.textContent = "Liberar";
+    removeButton.addEventListener("click", () => void removeScheduleBlock(block.id));
+    card.append(removeButton);
+    bookingList.append(card);
+  }
+}
+
+async function addScheduleBlock(startTime = null, durationMinutes = 90) {
+  if (!db) return;
+  if (startTime && timeToMinutes(startTime) + durationMinutes > 18 * 60) {
+    showToast("O bloqueio precisa terminar até 18h. Escolha um período menor.");
+    return;
+  }
+  const endTime = startTime
+    ? `${String(Math.floor((timeToMinutes(startTime) + durationMinutes) / 60)).padStart(2, "0")}:${String((timeToMinutes(startTime) + durationMinutes) % 60).padStart(2, "0")}`
+    : null;
+  const { error } = await db.from("schedule_blocks").insert({
+    blocked_date: selectedDate,
+    start_time: startTime,
+    end_time: endTime,
+  });
+  if (error) {
+    showToast(`Não foi possível bloquear esse período: ${error.message}`);
+    return;
+  }
+  showToast(startTime ? `Horário bloqueado por ${formatDuration(durationMinutes)}.` : "Dia bloqueado.");
+  await refreshDashboard();
+}
+
+function timeToMinutes(value) {
+  const [hours, minutes] = value.slice(0, 5).split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+async function saveServiceDurations(button) {
+  if (!db) return;
+  const rows = services.map((service) => {
+    const input = [...document.querySelectorAll("[data-duration-service]")]
+      .find((element) => element.dataset.durationService === service);
+    return { service, duration_minutes: Number(input.value) };
+  });
+  if (rows.some(({ duration_minutes }) =>
+    !Number.isInteger(duration_minutes) || duration_minutes < 30 ||
+    duration_minutes > 480 || duration_minutes % 30 !== 0
+  )) {
+    showToast("Use durações entre 30 minutos e 8 horas, em intervalos de 30 minutos.");
+    return;
+  }
+  button.disabled = true;
+  const { error } = await db.from("service_durations").upsert(rows, { onConflict: "service" });
+  button.disabled = false;
+  if (error) {
+    showToast(`Não foi possível salvar as durações: ${error.message}`);
+    return;
+  }
+  showToast("Durações dos serviços salvas.");
+}
+
+async function removeScheduleBlock(id) {
+  const { error } = await db.from("schedule_blocks").delete().eq("id", id);
+  if (error) {
+    showToast(`Não foi possível liberar o horário: ${error.message}`);
+    return;
+  }
+  showToast("Horário liberado.");
+  await refreshDashboard();
 }
 
 function statusLabel(status) {
@@ -315,7 +417,7 @@ async function refreshDashboard() {
   const today = dateToISO(new Date());
   const weekEnd = dateToISO(new Date(Date.now() + 6 * 24 * 60 * 60 * 1000));
   const activeUntil = dateToISO(new Date(Date.now() + 90 * 24 * 60 * 60 * 1000));
-  const [calendarResult, activeResult] = await Promise.all([
+  const [calendarResult, activeResult, blocksResult, durationsResult] = await Promise.all([
     db.from("bookings")
     .select(bookingFields)
     .gte("booking_date", start)
@@ -326,12 +428,23 @@ async function refreshDashboard() {
       .select("booking_date,status")
       .gte("booking_date", today)
       .lte("booking_date", activeUntil),
+    db.from("schedule_blocks")
+      .select("id,blocked_date,start_time,end_time")
+      .gte("blocked_date", start)
+      .lte("blocked_date", end),
+    db.from("service_durations").select("service,duration_minutes"),
   ]);
-  if (calendarResult.error || activeResult.error) {
-    showToast(`Não foi possível carregar a agenda: ${(calendarResult.error || activeResult.error).message}`);
+  if (calendarResult.error || activeResult.error || blocksResult.error || durationsResult.error) {
+    showToast(`Não foi possível carregar a agenda: ${(calendarResult.error || activeResult.error || blocksResult.error || durationsResult.error).message}`);
     return;
   }
   monthBookings = calendarResult.data;
+  monthBlocks = blocksResult.data;
+  for (const duration of durationsResult.data) {
+    const input = [...document.querySelectorAll("[data-duration-service]")]
+      .find((element) => element.dataset.durationService === duration.service);
+    if (input) input.value = String(duration.duration_minutes);
+  }
   const activeBookings = activeResult.data.filter((booking) => booking.status !== "cancelled");
   document.querySelector("#today-count").textContent =
     activeBookings.filter((booking) => booking.booking_date === today).length;
@@ -345,8 +458,8 @@ async function refreshDashboard() {
 
 function showAdmin() {
   adminOverlay.hidden = false;
-  document.querySelector("#main-nav").classList.remove("open");
-  document.querySelector("#menu-toggle").setAttribute("aria-expanded", "false");
+  document.querySelector("#main-nav")?.classList.remove("open");
+  document.querySelector("#menu-toggle")?.setAttribute("aria-expanded", "false");
   if (!db) {
     loginFeedback.textContent = "Configure a conexão segura com a agenda antes de acessar o painel.";
     return;
@@ -419,7 +532,8 @@ function refreshSelectedMonth(offset) {
 }
 
 function routeToAdmin() {
-  const isAdmin = window.location.hash === "#admin";
+  const isAdmin = window.location.hash === "#admin" ||
+    window.location.pathname.replace(/\/index\.html$/i, "").replace(/\/+$/, "").endsWith("/gestao");
   adminOverlay.hidden = !isAdmin;
   if (isAdmin) showAdmin();
   else {
@@ -428,25 +542,37 @@ function routeToAdmin() {
   }
 }
 
-document.querySelector("#year").textContent = String(new Date().getFullYear());
-document.querySelector("#menu-toggle").addEventListener("click", (event) => {
+const year = document.querySelector("#year");
+if (year) year.textContent = String(new Date().getFullYear());
+document.querySelector("#menu-toggle")?.addEventListener("click", (event) => {
   const menu = document.querySelector("#main-nav");
+  if (!menu) return;
   const isOpen = menu.classList.toggle("open");
   event.currentTarget.setAttribute("aria-expanded", String(isOpen));
 });
-document.querySelector("#main-nav").addEventListener("click", (event) => {
+document.querySelector("#main-nav")?.addEventListener("click", (event) => {
   if (event.target.closest("a")) {
     document.querySelector("#main-nav").classList.remove("open");
     document.querySelector("#menu-toggle").setAttribute("aria-expanded", "false");
   }
 });
-form.addEventListener("submit", submitBooking);
-bookingDate.min = dateToISO(new Date());
-bookingDate.addEventListener("change", () => {
-  setFeedback(feedback, "");
-  if (!bookingDate.value || !db) return;
-  void loadAvailableSlots(bookingDate.value);
-});
+if (form && bookingDate) {
+  form.addEventListener("submit", submitBooking);
+  bookingDate.min = dateToISO(new Date());
+  bookingDate.addEventListener("change", () => {
+    setFeedback(feedback, "");
+    if (!bookingDate.value || !db) return;
+    void loadAvailableSlots(bookingDate.value, bookingService.value);
+  });
+  bookingService.addEventListener("change", () => {
+    if (!bookingDate.value || !db) {
+      bookingTime.disabled = true;
+      bookingTime.innerHTML = '<option value="">Escolha uma data primeiro</option>';
+      return;
+    }
+    void loadAvailableSlots(bookingDate.value, bookingService.value);
+  });
+}
 loginForm.addEventListener("submit", handleLogin);
 document.querySelector("#signout-button").addEventListener("click", signOut);
 document.querySelector("#previous-month").addEventListener("click", () => refreshSelectedMonth(-1));
@@ -455,6 +581,18 @@ document.querySelector("#today-button").addEventListener("click", () => {
   visibleMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   selectedDate = dateToISO(new Date());
   void refreshDashboard();
+});
+document.querySelector("#block-day-button")?.addEventListener("click", () => void addScheduleBlock());
+document.querySelector("#block-time-button")?.addEventListener("click", () => {
+  const select = document.querySelector("#block-time");
+  if (!select.value) {
+    showToast("Escolha um horário para bloquear.");
+    return;
+  }
+  void addScheduleBlock(select.value, Number(document.querySelector("#block-duration").value));
+});
+document.querySelector("#save-durations-button")?.addEventListener("click", (event) => {
+  void saveServiceDurations(event.currentTarget);
 });
 setupContactLinks();
 setBookingAvailability(supabaseReady);
