@@ -87,7 +87,8 @@ Deno.serve(async (request) => {
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const resendKey = Deno.env.get("RESEND_API_KEY");
   const adminEmail = Deno.env.get("ADMIN_EMAIL");
-  const emailFrom = Deno.env.get("EMAIL_FROM");
+  const emailFromSetting = normalizeEmailFrom(Deno.env.get("EMAIL_FROM"));
+  const emailFrom = emailFromSetting.value;
   if (!supabaseUrl || !serviceKey) {
     console.error("Booking submission is missing its server-side Supabase configuration.");
     return jsonResponse({ error: "Não foi possível salvar o pedido agora. Tente novamente mais tarde." }, 503);
@@ -194,10 +195,11 @@ Deno.serve(async (request) => {
     if (!resendKey || !emailFrom || (recipient === "admin" && !adminEmail)) {
       const missing = [
         !resendKey && "RESEND_API_KEY",
-        !emailFrom && "EMAIL_FROM",
+        !emailFrom && !emailFromSetting.error && "EMAIL_FROM",
         recipient === "admin" && !adminEmail && "ADMIN_EMAIL",
       ].filter(Boolean);
-      const error = `Segredo ausente no Supabase: ${missing.join(", ")}.`;
+      const error = emailFromSetting.error ||
+        `Segredo ausente no Supabase: ${missing.join(", ")}.`;
       console.error(`Could not send the ${recipient} booking email. ${error}`);
       return { sent: false, error };
     }
@@ -250,6 +252,30 @@ Deno.serve(async (request) => {
     },
   }, 201);
 });
+
+function normalizeEmailFrom(value?: string) {
+  let sender = value?.trim() || "";
+  while (
+    sender.length >= 2 &&
+    ((sender.startsWith('"') && sender.endsWith('"')) ||
+      (sender.startsWith("'") && sender.endsWith("'")))
+  ) {
+    sender = sender.slice(1, -1).trim();
+  }
+  if (!sender) {
+    return { value: null, error: "Segredo EMAIL_FROM ausente no Supabase." };
+  }
+
+  const emailPattern = /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/;
+  const namedSender = /^([^<>]+?)\s*<([^<>]+)>$/.exec(sender);
+  if (emailPattern.test(sender) || (namedSender && emailPattern.test(namedSender[2]))) {
+    return { value: sender, error: null };
+  }
+  return {
+    value: null,
+    error: "EMAIL_FROM inválido. Use remetente@dominio-verificado ou DMM Montagens <remetente@dominio-verificado>.",
+  };
+}
 
 function brazilToday() {
   return new Intl.DateTimeFormat("en-CA", {
