@@ -342,9 +342,20 @@ async function submitBooking(event) {
   bookingTime.innerHTML = '<option value="">Escolha um serviço e uma data primeiro</option>';
   bookingTime.disabled = true;
   if (response.notificationsSent) {
-    setFeedback(feedback, "Pedido enviado! A DMM Montagens vai confirmar seu horário pelo WhatsApp ou e-mail.", true);
+    setFeedback(feedback, "Pedido registrado! Enviamos os detalhes para seu e-mail e para a equipe. A DMM Montagens vai confirmar o horário.", true);
   } else {
-    setFeedback(feedback, "Pedido salvo, mas houve um problema ao enviar os e-mails. Fale diretamente com a DMM Montagens para confirmar o horário.");
+    const delivery = response.emailDelivery;
+    const failedRecipients = delivery
+      ? [
+        !delivery.customer && "seu e-mail",
+        !delivery.admin && "o e-mail da equipe",
+      ].filter(Boolean).join(" e ")
+      : "um ou mais destinatários";
+    const serviceDetails = `${data.service}, ${formatDateTitle(data.booking_date)} às ${data.booking_time}${data.details ? ` — ${data.details}` : ""}`;
+    setFeedback(
+      feedback,
+      `ALERTA: o pedido foi registrado, mas houve erro ao enviar o e-mail para ${failedRecipients}. Detalhes: ${serviceDetails}. O horário ainda depende de confirmação da equipe.`,
+    );
   }
 }
 

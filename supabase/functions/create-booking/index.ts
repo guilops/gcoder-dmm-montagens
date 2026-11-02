@@ -88,9 +88,9 @@ Deno.serve(async (request) => {
   const resendKey = Deno.env.get("RESEND_API_KEY");
   const adminEmail = Deno.env.get("ADMIN_EMAIL");
   const emailFrom = Deno.env.get("EMAIL_FROM");
-  if (!supabaseUrl || !serviceKey || !resendKey || !adminEmail || !emailFrom) {
-    console.error("Booking submission is missing its server-side Supabase or email configuration.");
-    return jsonResponse({ error: "Não foi possível enviar o pedido agora. Tente pelo WhatsApp." }, 503);
+  if (!supabaseUrl || !serviceKey) {
+    console.error("Booking submission is missing its server-side Supabase configuration.");
+    return jsonResponse({ error: "Não foi possível salvar o pedido agora. Tente novamente mais tarde." }, 503);
   }
 
   const client = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
@@ -187,7 +187,19 @@ Deno.serve(async (request) => {
     html: `<p>Olá, ${safeName}!</p><p>Seu pedido de <strong>${safeService}</strong> (estimativa de ${formatDuration(durationMinutes)}) para <strong>${dateLabel} às ${time}</strong> foi recebido. O horário ainda depende da confirmação da DMM Montagens.</p><p>Seus detalhes: ${safeDetails}</p><p>A DMM Montagens vai entrar em contato pelo WhatsApp ${safePhone} para combinar o orçamento e confirmar o atendimento.</p><p>Obrigado,<br>DMM Montagens</p>`,
   };
 
-  const deliveryResults = await Promise.all([adminMessage, customerMessage].map(async (message) => {
+  const deliveryResults = await Promise.all([
+    { recipient: "admin", message: adminMessage },
+    { recipient: "customer", message: customerMessage },
+  ].map(async ({ recipient, message }) => {
+    if (!resendKey || !emailFrom || (recipient === "admin" && !adminEmail)) {
+      const missing = [
+        !resendKey && "RESEND_API_KEY",
+        !emailFrom && "EMAIL_FROM",
+        recipient === "admin" && !adminEmail && "ADMIN_EMAIL",
+      ].filter(Boolean);
+      console.error(`Could not send the ${recipient} booking email. Missing configuration: ${missing.join(", ")}.`);
+      return false;
+    }
     try {
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
@@ -198,12 +210,12 @@ Deno.serve(async (request) => {
         body: JSON.stringify(message),
       });
       if (!response.ok) {
-        console.error(`Resend could not send a booking notification (${response.status}):`, await response.text());
+        console.error(`Resend could not send the ${recipient} booking email (${response.status}):`, await response.text());
         return false;
       }
       return true;
     } catch (error) {
-      console.error("Resend request failed:", error);
+      console.error(`Resend request for the ${recipient} booking email failed:`, error);
       return false;
     }
   }));
@@ -218,6 +230,10 @@ Deno.serve(async (request) => {
   return jsonResponse({
     bookingId: booking.id,
     notificationsSent,
+    emailDelivery: {
+      admin: deliveryResults[0],
+      customer: deliveryResults[1],
+    },
   }, 201);
 });
 
