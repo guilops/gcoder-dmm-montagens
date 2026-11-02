@@ -37,54 +37,54 @@ const services = [
 ];
 const heroPhotos = [
   {
-    caption: "Montagem de móvel com ferramentas e manual",
-    image: "https://images.pexels.com/photos/5805491/pexels-photo-5805491.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    source: "https://www.pexels.com/photo/tools-and-paper-instruction-for-furniture-assembly-5805491/",
+    caption: "Trabalhador e ferramentas em uma cozinha em reforma",
+    image: "https://images.pexels.com/photos/15124970/pexels-photo-15124970.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/men-working-inside-a-house-under-repairs-15124970/",
   },
   {
-    caption: "Montagem de mesa com chave de fenda",
-    image: "https://images.pexels.com/photos/4554427/pexels-photo-4554427.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    source: "https://www.pexels.com/photo/woman-in-white-long-sleeve-shirt-sitting-on-chair-4554427/",
+    caption: "Carpinteiro usando furadeira em uma peça de madeira",
+    image: "https://images.pexels.com/photos/5974387/pexels-photo-5974387.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/unrecognizable-guy-drilling-wooden-board-in-workshop-5974387/",
   },
   {
-    caption: "Ajuste de peças com chave Allen",
-    image: "https://images.pexels.com/photos/5217124/pexels-photo-5217124.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    source: "https://www.pexels.com/photo/unrecognizable-man-hands-assembling-baby-cot-5217124/",
+    caption: "Montador usando furadeira em um móvel",
+    image: "https://images.pexels.com/photos/1249611/pexels-photo-1249611.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/person-using-dewalt-cordless-impact-driver-on-brown-board-1249611/",
   },
   {
-    caption: "Montagem de móvel em uma casa nova",
-    image: "https://images.pexels.com/photos/4554417/pexels-photo-4554417.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    source: "https://www.pexels.com/photo/person-in-gray-long-sleeve-shirt-holding-black-smartphone-4554417/",
+    caption: "Montador trabalhando em uma peça de madeira",
+    image: "https://images.pexels.com/photos/5974053/pexels-photo-5974053.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/man-drilling-wooden-plank-on-desk-5974053/",
   },
   {
-    caption: "Montagem de mesa em casa",
-    image: "https://images.pexels.com/photos/4554421/pexels-photo-4554421.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    source: "https://www.pexels.com/photo/woman-in-white-crew-neck-t-shirt-holding-red-and-white-plastic-toy-4554421/",
+    caption: "Carpinteiro usando ferramenta elétrica na montagem",
+    image: "https://images.pexels.com/photos/6790937/pexels-photo-6790937.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/close-up-shot-of-a-carpenter-using-an-impact-driver-6790937/",
   },
   {
-    caption: "Montagem de mesa durante a mudança",
-    image: "https://images.pexels.com/photos/4554420/pexels-photo-4554420.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    source: "https://www.pexels.com/photo/man-in-gray-hoodie-using-black-tablet-computer-4554420/",
+    caption: "Montador fazendo furos em uma peça de madeira",
+    image: "https://images.pexels.com/photos/5974382/pexels-photo-5974382.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/unrecognizable-man-drilling-hole-in-wooden-blank-5974382/",
   },
   {
-    caption: "Montagem de banco de madeira",
-    image: "https://images.pexels.com/photos/31755424/pexels-photo-31755424.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    source: "https://www.pexels.com/photo/close-up-of-hands-assembling-wooden-furniture-31755424/",
+    caption: "Ajuste de uma peça de madeira com furadeira",
+    image: "https://images.pexels.com/photos/5974236/pexels-photo-5974236.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/man-drilling-wooden-piece-of-detail-with-screwdriver-5974236/",
   },
   {
-    caption: "Montagem de mesa de centro",
-    image: "https://images.pexels.com/photos/4554425/pexels-photo-4554425.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    source: "https://www.pexels.com/photo/woman-in-white-long-sleeve-shirt-and-black-pants-sitting-on-floor-4554425/",
+    caption: "Carpinteiro usando furadeira em uma bancada",
+    image: "https://images.pexels.com/photos/5974049/pexels-photo-5974049.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/crop-man-drilling-holes-in-wooden-plank-5974049/",
   },
   {
-    caption: "Montagem de mesa em uma casa nova",
-    image: "https://images.pexels.com/photos/4554429/pexels-photo-4554429.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    source: "https://www.pexels.com/photo/woman-in-white-long-sleeve-shirt-sitting-on-gray-couch-4554429/",
+    caption: "Montagem de madeira com ferramentas de trabalho",
+    image: "https://images.pexels.com/photos/7285914/pexels-photo-7285914.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/a-close-up-shot-of-a-person-doing-woodworks-7285914/",
   },
   {
-    caption: "Montagem de berço com ferramentas",
-    image: "https://images.pexels.com/photos/7491417/pexels-photo-7491417.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    source: "https://www.pexels.com/photo/a-man-setting-up-the-crib-7491417/",
+    caption: "Carpinteiro instalando uma dobradiça em madeira",
+    image: "https://images.pexels.com/photos/7285919/pexels-photo-7285919.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/putting-of-hinge-on-a-wood-7285919/",
   },
 ];
 const bookingFields = "id,customer_name,customer_phone,customer_email,service,details,booking_date,booking_time,duration_minutes,status";
@@ -274,7 +274,10 @@ async function loadAvailableSlots(date, service) {
   const { data, error } = await db.functions.invoke("booking-slots", { body: { date, service } });
   if (error) {
     bookingTime.innerHTML = '<option value="">Não foi possível carregar os horários</option>';
-    setFeedback(feedback, "Não foi possível consultar a agenda agora. Tente novamente em instantes ou fale pelo WhatsApp.");
+    const message = error.context?.status === 404
+      ? "A consulta da agenda ainda não foi publicada no Supabase. A DMM Montagens precisa publicar a função booking-slots."
+      : "Não foi possível consultar a agenda agora. Tente novamente em instantes ou fale pelo WhatsApp.";
+    setFeedback(feedback, message);
     return;
   }
   if (!Array.isArray(data?.availableSlots)) {
@@ -426,6 +429,114 @@ function renderBookingList() {
     removeButton.addEventListener("click", () => void removeScheduleBlock(block.id));
     card.append(removeButton);
     bookingList.append(card);
+  }
+}
+
+function getWeekRange(dateValue) {
+  const start = new Date(`${dateValue}T12:00:00`);
+  start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  return { start: dateToISO(start), end: dateToISO(end) };
+}
+
+function escapeICalendarText(value) {
+  return String(value || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/\r\n|\r|\n/g, "\\n")
+    .replace(/,/g, "\\,")
+    .replace(/;/g, "\\;");
+}
+
+function foldICalendarLine(line) {
+  const encoder = new TextEncoder();
+  let folded = "";
+  let currentLine = "";
+  let currentBytes = 0;
+  for (const character of line) {
+    const characterBytes = encoder.encode(character).length;
+    if (currentBytes + characterBytes > 75) {
+      folded += `${currentLine}\r\n `;
+      currentLine = "";
+      currentBytes = 1;
+    }
+    currentLine += character;
+    currentBytes += characterBytes;
+  }
+  return folded + currentLine;
+}
+
+function formatICalendarDate(date, time) {
+  return new Date(`${date}T${time.slice(0, 5)}:00-03:00`)
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}/, "");
+}
+
+function createCalendarFile(bookings) {
+  const timestamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//DMM Montagens//Agenda//PT-BR",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+  ];
+  for (const booking of bookings) {
+    const start = new Date(`${booking.booking_date}T${booking.booking_time.slice(0, 5)}:00-03:00`);
+    const end = new Date(start.getTime() + booking.duration_minutes * 60_000);
+    const startValue = formatICalendarDate(booking.booking_date, booking.booking_time);
+    const endValue = end.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    const description = [
+      booking.service,
+      `Duração: ${formatDuration(booking.duration_minutes)}`,
+      `WhatsApp: ${booking.customer_phone}`,
+      booking.details,
+    ].filter(Boolean).join("\n");
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:${booking.id}@dmm-montagens`,
+      `DTSTAMP:${timestamp}`,
+      `DTSTART:${startValue}`,
+      `DTEND:${endValue}`,
+      `SUMMARY:${escapeICalendarText(`${booking.service} - ${booking.customer_name}`)}`,
+      `DESCRIPTION:${escapeICalendarText(description)}`,
+      "END:VEVENT",
+    );
+  }
+  lines.push("END:VCALENDAR");
+  return `${lines.map(foldICalendarLine).join("\r\n")}\r\n`;
+}
+
+async function exportConfirmedWeek(button) {
+  const { start, end } = getWeekRange(selectedDate);
+  button.disabled = true;
+  try {
+    const { data, error } = await db.from("bookings")
+      .select(bookingFields)
+      .eq("status", "confirmed")
+      .gte("booking_date", start)
+      .lte("booking_date", end)
+      .order("booking_date")
+      .order("booking_time");
+    if (error) {
+      showToast(`Não foi possível exportar a semana: ${error.message}`);
+      return;
+    }
+    if (data.length === 0) {
+      showToast("Não há agendamentos confirmados nesta semana.");
+      return;
+    }
+    const blob = new Blob([createCalendarFile(data)], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `dmm-agenda-${start}-${end}.ics`;
+    link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+    showToast(`${data.length} ${data.length === 1 ? "agendamento exportado" : "agendamentos exportados"} para a agenda.`);
+  } finally {
+    button.disabled = false;
   }
 }
 
@@ -729,6 +840,9 @@ document.querySelector("#today-button").addEventListener("click", () => {
   visibleMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
   selectedDate = dateToISO(new Date());
   void refreshDashboard();
+});
+document.querySelector("#export-week-button")?.addEventListener("click", (event) => {
+  void exportConfirmedWeek(event.currentTarget);
 });
 document.querySelector("#block-day-button")?.addEventListener("click", () => void addScheduleBlock());
 document.querySelector("#block-time-button")?.addEventListener("click", () => {

@@ -13,7 +13,7 @@ Site responsivo de apresentação e agendamento, com painel de administração. 
 
 ## Antes de publicar
 
-Os contatos, as fotos de trabalhos reais, os bairros e a integração dependem de informações da DMM Montagens. O carrossel usa 10 fotos ilustrativas do Pexels, com links para as fontes; elas mostram exemplos de montagem, não trabalhos realizados pela equipe. Trocar por fotos próprias deixa a divulgação mais autêntica. Preencha [config.js](./config.js) com o telefone WhatsApp em formato internacional só com números (por exemplo `5511999999999`), o e-mail público e a área atendida.
+Os contatos, os bairros e a integração dependem de informações da DMM Montagens. O carrossel usa 10 fotos ilustrativas do Pexels de profissionais trabalhando com ferramentas e montagem; elas não são registros de serviços feitos pela equipe. Os links de crédito levam às fontes. Trocar por fotos próprias deixa a divulgação mais autêntica. Preencha [config.js](./config.js) com o telefone WhatsApp em formato internacional só com números (por exemplo `5511999999999`), o e-mail público e a área atendida.
 
 Não publique informações de conexão inventadas nem coloque a chave **service role** do Supabase no site. O site recebe somente a URL do projeto e a chave pública **anon/publishable**; a chave privada fica nos segredos das Edge Functions.
 
@@ -29,11 +29,11 @@ Não publique informações de conexão inventadas nem coloque a chave **service
    ```
 
    Não habilite cadastro público para clientes. O painel usa as contas cadastradas pelo administrador.
-5. Instale a CLI do Supabase, entre na conta e vincule a pasta do projeto ao identificador exibido em **Project Settings → General**:
+5. Execute a CLI do Supabase, entre na conta e vincule a pasta do site ao projeto:
 
    ```powershell
    npx supabase login
-   npx supabase link --project-ref SEU_PROJECT_REF
+   npx supabase link --project-ref wgpzzzazmpffbrpqlcam
    npx supabase secrets set RESEND_API_KEY="SUA_CHAVE_RESEND" ADMIN_EMAIL="EMAIL_DA_DMM_MONTAGENS" EMAIL_FROM='DMM Montagens <agenda@seudominio.com>'
    npx supabase functions deploy booking-slots --no-verify-jwt
    npx supabase functions deploy create-booking --no-verify-jwt
@@ -42,12 +42,14 @@ Não publique informações de conexão inventadas nem coloque a chave **service
    Ao alterar a disponibilidade da agenda, publique novamente as duas funções para que bloqueios sejam aplicados tanto na consulta quanto no envio do pedido.
 
    As funções usam as variáveis `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` disponibilizadas pelo próprio ambiente Supabase. O parâmetro `--no-verify-jwt` é necessário para a solicitação pública do cliente; a função valida os campos, protege a chave privada no servidor e não retorna dados pessoais da agenda.
+
+   Se o site mostrar **“Requested function was not found”** ou erro 404 ao consultar horários, publique as duas funções acima: esse erro é de publicação, não das tabelas. Depois do deploy, `booking-slots` consulta as durações, bloqueios e pedidos pendentes/confirmados salvos no banco. Se a função responder erro 500, confira se executou o SQL de atualização e se os segredos do Supabase estão configurados.
 6. Crie/verifique um domínio de envio no [Resend](https://resend.com/) e configure nele o remetente autorizado no segredo `EMAIL_FROM`. O `ADMIN_EMAIL` recebe novos pedidos; o e-mail informado pelo cliente recebe a confirmação de recebimento. A DMM Montagens ainda precisa confirmar o horário.
 7. Copie a URL do projeto e a chave **anon/publicável** em `config.js`. Complete telefone e região. **Nunca copie a chave service role para esse arquivo.**
 8. Abra `index.html` em um navegador para conferir a apresentação. Para testar as Edge Functions localmente, configure e inicie o Supabase CLI para a instância local, ou publique as funções no projeto Supabase de teste.
 9. Cadastre uma solicitação de teste e confirme que ela aparece em `/gestao/`, que os bloqueios e as durações evitam horários sobrepostos e que as mensagens chegam a ambas as caixas de e-mail. Exclua os dados de teste antes de abrir a agenda ao público.
 
-O envio de e-mail usa o remetente/domínio verificado pelo Resend. Se o envio falhar após a gravação do pedido, o site avisa o cliente; a solicitação permanece salva e visível no painel, com indicação registrada na coluna `notifications_sent`. Em `/gestao/`, configure a duração dos serviços em intervalos de 30 minutos (padrões: 90 minutos para móveis em geral/outros e 180 para planejados/desmontagem), bloqueie dias ou horários e confirme os pedidos manualmente. Os tempos de pedidos existentes são preservados mesmo que a estimativa de um serviço mude depois.
+O envio de e-mail usa o remetente/domínio verificado pelo Resend. Se o envio falhar após a gravação do pedido, o site avisa o cliente; a solicitação permanece salva e visível no painel, com indicação registrada na coluna `notifications_sent`. Em `/gestao/`, configure a duração dos serviços em intervalos de 30 minutos (padrões: 90 minutos para móveis em geral/outros e 180 para planejados/desmontagem), bloqueie dias ou horários e confirme os pedidos manualmente. O botão **Exportar semana para agenda (.ics)** baixa os atendimentos confirmados de segunda a domingo, considerando a data selecionada no calendário. Importe o arquivo `.ics` no Google Calendar, Outlook ou outro aplicativo de agenda. Os tempos de pedidos existentes são preservados mesmo que a estimativa de um serviço mude depois.
 
 ## Publicar o site
 
