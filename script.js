@@ -40,9 +40,9 @@ const services = [
 ];
 const heroPhotos = [
   {
-    caption: "Montador conferindo o alinhamento com nível",
-    image: "https://images.pexels.com/photos/8470044/pexels-photo-8470044.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    source: "https://www.pexels.com/photo/a-man-in-black-long-sleeves-checking-the-white-wall-using-spirit-level-8470044/",
+    caption: "Montador montando um móvel em uma sala",
+    image: "assets/montador-montagem.png",
+    source: "",
   },
   {
     caption: "Carpinteiro usando furadeira em uma peça de madeira",
@@ -229,7 +229,11 @@ function setupHeroCarousel() {
     image.src = photo.image;
     image.alt = photo.caption;
     caption.textContent = photo.caption;
-    source.href = photo.source;
+    source.hidden = !photo.source;
+    if (photo.source) {
+      source.href = photo.source;
+      source.textContent = "Ver foto no Pexels";
+    }
     counter.textContent = `${String(currentIndex + 1).padStart(2, "0")} / ${String(heroPhotos.length).padStart(2, "0")}`;
     for (const [dotIndex, dot] of [...dots.children].entries()) {
       dot.setAttribute("aria-pressed", String(dotIndex === currentIndex));
@@ -264,6 +268,11 @@ function setupHeroCarousel() {
   });
 
   const carousel = image.closest(".hero-carousel");
+  carousel.addEventListener("click", (event) => {
+    if (event.target.closest(".hero-image-label, .photo-credit, .carousel-controls")) return;
+    const bounds = carousel.getBoundingClientRect();
+    showPhoto(event.clientX < bounds.left + bounds.width / 2 ? currentIndex - 1 : currentIndex + 1);
+  });
   carousel.addEventListener("mouseenter", () => {
     hovering = true;
     stopTimer();
