@@ -59,21 +59,24 @@
     <section class="section-wrap section-pad booking" id="agendamento">
       <div class="booking-intro"><p class="eyebrow"><span></span> AGENDA ONLINE</p><h2>Vamos combinar<br>o <em>melhor horário.</em></h2><p>Escolha uma data e um horário disponível. Seu pedido será enviado para confirmação; entraremos em contato para alinhar os detalhes.</p><div class="booking-assurance"><span aria-hidden="true">✓</span><span><strong>Pedido sujeito à confirmação</strong><small>O horário só fica confirmado após nosso retorno.</small></span></div><div class="booking-contact"><span>Prefere falar diretamente?</span><a class="contact-whatsapp" data-whatsapp href="#agendamento"><span aria-hidden="true">↗</span> Chamar no WhatsApp</a><a data-email href="#agendamento">Enviar e-mail</a></div></div>
       <form class="booking-form" id="booking-form">
-        <div class="form-heading"><span>SOLICITAÇÃO DE AGENDAMENTO</span><span class="form-step">01 <i>/ 01</i></span></div>
-        <label>Nome completo<input name="customer_name" type="text" autocomplete="name" minlength="2" maxlength="100" required placeholder="Como podemos chamar você?"></label>
-        <div class="form-row"><label>WhatsApp<input name="customer_phone" type="tel" autocomplete="tel" minlength="10" maxlength="30" required placeholder="(11) 99999-9999"></label><label>E-mail<input name="customer_email" type="email" autocomplete="email" maxlength="254" required placeholder="voce@email.com"></label></div>
+        <div class="form-heading"><span>SOLICITAÇÃO DE AGENDAMENTO</span><span class="form-step" id="booking-step">01 <i>/ 03</i></span></div>
         <label>Qual serviço você precisa?
           <select name="service" required>
             <option value="">Selecione uma opção</option><option>Móveis em geral</option><option>Armários e cozinhas planejadas</option><option>Desmontagem e remontagem</option><option>Outro — vou explicar nos detalhes</option>
           </select>
         </label>
-        <div class="form-row"><label>Data desejada<input name="booking_date" type="date" required></label><label>Horário disponível<select id="booking-time" name="booking_time" required disabled><option value="">Agenda online em configuração</option></select></label></div>
-        <label>Detalhes do serviço<textarea name="details" maxlength="1200" placeholder="Conte um pouco sobre o móvel, quantidade de peças ou endereço/bairro."></textarea></label>
-        <label class="trap-field" aria-hidden="true">Deixe este campo vazio<input name="website" type="text" tabindex="-1" autocomplete="off"></label>
-        <label class="consent-label"><input type="checkbox" required><span>Autorizo o uso destes dados para contato e atendimento da minha solicitação.</span></label>
+        <label>Data desejada<input name="booking_date" type="date" required disabled></label>
         <p class="form-feedback" id="booking-feedback" role="status" aria-live="polite"></p>
-        <button class="button button-dark form-submit" type="submit">Solicitar agendamento <span aria-hidden="true">↗</span></button>
-        <p class="form-legal">Seus dados são usados somente para tratar deste pedido. O envio não confirma automaticamente o horário.</p>
+        <div class="booking-details" id="booking-details" hidden>
+          <label>Horário disponível<select id="booking-time" name="booking_time" required disabled><option value="">Escolha uma data primeiro</option></select></label>
+          <label>Nome completo<input name="customer_name" type="text" autocomplete="name" minlength="2" maxlength="100" required placeholder="Como podemos chamar você?"></label>
+          <div class="form-row"><label>WhatsApp<input name="customer_phone" type="tel" autocomplete="tel" minlength="10" maxlength="30" required placeholder="(11) 99999-9999"></label><label>E-mail<input name="customer_email" type="email" autocomplete="email" maxlength="254" required placeholder="voce@email.com"></label></div>
+          <label>Detalhes do serviço<textarea name="details" maxlength="1200" placeholder="Conte um pouco sobre o móvel, quantidade de peças ou endereço/bairro."></textarea></label>
+          <label class="trap-field" aria-hidden="true">Deixe este campo vazio<input name="website" type="text" tabindex="-1" autocomplete="off"></label>
+          <label class="consent-label"><input type="checkbox" required><span>Autorizo o uso destes dados para contato e atendimento da minha solicitação.</span></label>
+          <button class="button button-dark form-submit" type="submit" disabled>Solicitar agendamento <span aria-hidden="true">↗</span></button>
+          <p class="form-legal">Seus dados são usados somente para tratar deste pedido. O envio não confirma automaticamente o horário.</p>
+        </div>
       </form>
     </section>
   </main>

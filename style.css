@@ -153,6 +153,8 @@ h1 em, h2 em { color: var(--green); font-family: var(--serif); font-weight: 400;
 .contact-whatsapp { display: flex; gap: 8px; color: var(--green); font-size: 11px; font-weight: 700; }
 .contact-whatsapp span { color: var(--orange); }
 .booking-form { display: grid; gap: 14px; padding: 25px; border: 1px solid #e5e1d7; background: #fbfaf6; }
+.booking-details { display: grid; gap: 14px; }
+.booking-details[hidden] { display: none; }
 .form-heading { display: flex; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--line); color: var(--green); font-size: 9px; font-weight: 700; letter-spacing: 1.2px; }
 .form-step { color: var(--orange); }
 .form-step i { color: #a3a296; font-style: normal; }

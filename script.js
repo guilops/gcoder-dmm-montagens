@@ -14,6 +14,9 @@ const form = document.querySelector("#booking-form");
 const bookingDate = form?.elements.booking_date;
 const bookingService = form?.elements.service;
 const bookingTime = document.querySelector("#booking-time");
+const bookingDetails = document.querySelector("#booking-details");
+const bookingStep = document.querySelector("#booking-step");
+const bookingSubmit = form?.querySelector('[type="submit"]');
 const feedback = document.querySelector("#booking-feedback");
 const adminOverlay = document.querySelector("#admin-overlay");
 const loginForm = document.querySelector("#login-form");
@@ -94,6 +97,9 @@ let monthBookings = [];
 let monthBlocks = [];
 let toastTimer;
 let clientBookingsEnabled = false;
+let slotRequestId = 0;
+const unavailableBookingMessage =
+  "Essa data ou horário não está mais disponível para agendamento. Escolha outra data ou horário.";
 
 function dateToISO(date) {
   const year = date.getFullYear();
@@ -126,12 +132,36 @@ function setBookingAvailability(enabled) {
   for (const element of form.querySelectorAll("input, select, textarea, button")) {
     element.disabled = !enabled;
   }
-  bookingTime.innerHTML = enabled
-    ? '<option value="">Escolha uma data primeiro</option>'
-    : '<option value="">Agenda online em configuração</option>';
+  bookingService.disabled = !enabled;
+  bookingDate.disabled = true;
+  resetBookingSteps();
   if (!enabled) {
     setFeedback(feedback, "Os agendamentos online serão ativados após a configuração segura do serviço de agenda.");
   }
+}
+
+function setBookingDetailsVisible(visible) {
+  bookingDetails.hidden = !visible;
+  for (const element of bookingDetails.querySelectorAll("input, select, textarea, button")) {
+    element.disabled = !visible;
+  }
+  bookingSubmit.disabled = !visible || !bookingTime.value;
+}
+
+function updateBookingStep(step) {
+  bookingStep.innerHTML = `${String(step).padStart(2, "0")} <i>/ 03</i>`;
+}
+
+function resetBookingSteps() {
+  slotRequestId += 1;
+  bookingDate.value = "";
+  bookingDate.disabled = true;
+  bookingTime.innerHTML = clientBookingsEnabled
+    ? '<option value="">Escolha uma data primeiro</option>'
+    : '<option value="">Agenda online em configuração</option>';
+  bookingTime.disabled = true;
+  setBookingDetailsVisible(false);
+  updateBookingStep(1);
 }
 
 function setupContactLinks() {
@@ -263,15 +293,19 @@ function setupHeroCarousel() {
 }
 
 async function loadAvailableSlots(date, service) {
+  const requestId = ++slotRequestId;
+  setBookingDetailsVisible(false);
+  updateBookingStep(2);
   if (!service) {
     bookingTime.disabled = true;
     bookingTime.innerHTML = '<option value="">Escolha o serviço primeiro</option>';
-    setFeedback(feedback, "Selecione o serviço para consultar os horários e a duração.");
+    updateBookingStep(1);
     return;
   }
   bookingTime.disabled = true;
   bookingTime.innerHTML = '<option value="">Consultando horários...</option>';
   const { data, error } = await db.functions.invoke("booking-slots", { body: { date, service } });
+  if (requestId !== slotRequestId) return;
   if (error) {
     bookingTime.innerHTML = '<option value="">Não foi possível carregar os horários</option>';
     const message = error.context?.status === 404
@@ -290,8 +324,8 @@ async function loadAvailableSlots(date, service) {
     ? `Escolha um horário · ${formatDuration(data.durationMinutes)}`
     : "Escolha um horário";
   if (data.availableSlots.length === 0) {
-    bookingTime.add(new Option("Sem horários disponíveis", ""));
-    setFeedback(feedback, "Não há horários livres neste dia. Escolha outra data.");
+    bookingTime.add(new Option("Data sem horários disponíveis", ""));
+    setFeedback(feedback, unavailableBookingMessage);
     return;
   }
   bookingTime.add(new Option(durationLabel, ""));
@@ -299,6 +333,8 @@ async function loadAvailableSlots(date, service) {
     bookingTime.add(new Option(slot, slot));
   }
   bookingTime.disabled = false;
+  setBookingDetailsVisible(true);
+  updateBookingStep(3);
   setFeedback(feedback, "");
 }
 
@@ -314,7 +350,7 @@ async function submitBooking(event) {
   submitButton.textContent = "Enviando pedido...";
   setFeedback(feedback, "");
   const { data: response, error } = await db.functions.invoke("create-booking", { body: data });
-  submitButton.disabled = false;
+  submitButton.disabled = !bookingTime.value;
   submitButton.innerHTML = 'Solicitar agendamento <span aria-hidden="true">↗</span>';
   if (error) {
     let responseBody;
@@ -323,14 +359,20 @@ async function submitBooking(event) {
     } catch (parseError) {
       console.error("Could not read the booking error response:", parseError);
     }
-    setFeedback(feedback, responseBody?.error || "Não foi possível enviar seu pedido. Confira sua conexão e tente novamente.");
-    if (bookingDate.value) await loadAvailableSlots(bookingDate.value, bookingService.value);
+    if (responseBody?.code === "slot_taken") {
+      if (bookingDate.value) await loadAvailableSlots(bookingDate.value, bookingService.value);
+      setFeedback(feedback, unavailableBookingMessage);
+    } else {
+      setFeedback(feedback, responseBody?.error || "Não foi possível enviar seu pedido. Confira sua conexão e tente novamente.");
+    }
     return;
   }
   if (response?.error) {
-    setFeedback(feedback, response.error);
     if (response.code === "slot_taken" && bookingDate.value) {
       await loadAvailableSlots(bookingDate.value, bookingService.value);
+      setFeedback(feedback, unavailableBookingMessage);
+    } else {
+      setFeedback(feedback, response.error);
     }
     return;
   }
@@ -339,8 +381,7 @@ async function submitBooking(event) {
     return;
   }
   form.reset();
-  bookingTime.innerHTML = '<option value="">Escolha um serviço e uma data primeiro</option>';
-  bookingTime.disabled = true;
+  resetBookingSteps();
   if (response.notificationsSent) {
     setFeedback(feedback, "Pedido registrado! Enviamos os detalhes para seu e-mail e para a equipe. A DMM Montagens vai confirmar o horário.", true);
   } else {
@@ -892,18 +933,28 @@ document.querySelector("#main-nav")?.addEventListener("click", (event) => {
 if (form && bookingDate) {
   form.addEventListener("submit", submitBooking);
   bookingDate.min = dateToISO(new Date());
+  const lastBookableDate = new Date();
+  lastBookableDate.setDate(lastBookableDate.getDate() + 90);
+  bookingDate.max = dateToISO(lastBookableDate);
   bookingDate.addEventListener("change", () => {
     setFeedback(feedback, "");
-    if (!bookingDate.value || !db) return;
-    void loadAvailableSlots(bookingDate.value, bookingService.value);
-  });
-  bookingService.addEventListener("change", () => {
+    setBookingDetailsVisible(false);
+    slotRequestId += 1;
     if (!bookingDate.value || !db) {
-      bookingTime.disabled = true;
       bookingTime.innerHTML = '<option value="">Escolha uma data primeiro</option>';
       return;
     }
     void loadAvailableSlots(bookingDate.value, bookingService.value);
+  });
+  bookingService.addEventListener("change", () => {
+    resetBookingSteps();
+    setFeedback(feedback, "");
+    if (!bookingService.value || !clientBookingsEnabled) return;
+    bookingDate.disabled = false;
+    updateBookingStep(2);
+  });
+  bookingTime.addEventListener("change", () => {
+    bookingSubmit.disabled = !bookingTime.value;
   });
 }
 loginForm.addEventListener("submit", handleLogin);

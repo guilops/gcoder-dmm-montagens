@@ -11,6 +11,8 @@ const allowedServices = new Set([
   "Desmontagem e remontagem",
   "Outro — vou explicar nos detalhes",
 ]);
+const unavailableBookingMessage =
+  "Essa data ou horário não está mais disponível para agendamento. Escolha outra data ou horário.";
 
 type BookingRequest = {
   customer_name?: unknown;
@@ -121,7 +123,7 @@ Deno.serve(async (request) => {
   if (isBlocked) {
     return jsonResponse({
       code: "slot_taken",
-      error: "Esse horário não está mais disponível. Escolha outro horário.",
+      error: unavailableBookingMessage,
     }, 409);
   }
 
@@ -140,7 +142,7 @@ Deno.serve(async (request) => {
   })) {
     return jsonResponse({
       code: "slot_taken",
-      error: "Esse horário não está mais disponível. Escolha outro horário.",
+      error: unavailableBookingMessage,
     }, 409);
   }
 
@@ -158,7 +160,7 @@ Deno.serve(async (request) => {
   if (insertError?.code === "23505" || insertError?.code === "23P01") {
     return jsonResponse({
       code: "slot_taken",
-      error: "Esse horário acabou de ser reservado. Escolha outro horário.",
+      error: unavailableBookingMessage,
     }, 409);
   }
   if (insertError || !booking) {
