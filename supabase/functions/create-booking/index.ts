@@ -268,7 +268,29 @@ function normalizeEmailFrom(value?: string) {
 
   const emailPattern = /^[^\s<>@]+@[^\s<>@]+\.[^\s<>@]+$/;
   const namedSender = /^([^<>]+?)\s*<([^<>]+)>$/.exec(sender);
-  if (emailPattern.test(sender) || (namedSender && emailPattern.test(namedSender[2]))) {
+  const senderAddress = emailPattern.test(sender) ? sender : namedSender?.[2];
+  if (!senderAddress) {
+    if (/@(?:gmail|googlemail|outlook|hotmail|yahoo)\./i.test(sender)) {
+      return {
+        value: null,
+        error: "EMAIL_FROM está mal formatado e usa um e-mail pessoal. O Resend exige um remetente de domínio próprio verificado. Use DMM Montagens <agenda@seudominio.com>, sem aspas, depois de verificar seu domínio no Resend.",
+      };
+    }
+    return {
+      value: null,
+      error: "EMAIL_FROM inválido. Use remetente@dominio.com ou DMM Montagens <remetente@dominio.com>, sem aspas no valor.",
+    };
+  }
+  const senderDomain = senderAddress.split("@")[1].toLowerCase();
+  if (
+    ["gmail.com", "googlemail.com", "outlook.com", "hotmail.com", "yahoo.com"].includes(senderDomain)
+  ) {
+    return {
+      value: null,
+      error: "EMAIL_FROM usa um e-mail pessoal. O Resend exige um remetente de domínio próprio verificado; configure, por exemplo, DMM Montagens <agenda@seudominio.com> após verificar esse domínio no Resend.",
+    };
+  }
+  if (emailPattern.test(sender) || namedSender) {
     return { value: sender, error: null };
   }
   return {
