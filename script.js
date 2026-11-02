@@ -35,6 +35,58 @@ const services = [
   "Desmontagem e remontagem",
   "Outro — vou explicar nos detalhes",
 ];
+const heroPhotos = [
+  {
+    caption: "Montagem de móvel com ferramentas e manual",
+    image: "https://images.pexels.com/photos/5805491/pexels-photo-5805491.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/tools-and-paper-instruction-for-furniture-assembly-5805491/",
+  },
+  {
+    caption: "Montagem de mesa com chave de fenda",
+    image: "https://images.pexels.com/photos/4554427/pexels-photo-4554427.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/woman-in-white-long-sleeve-shirt-sitting-on-chair-4554427/",
+  },
+  {
+    caption: "Ajuste de peças com chave Allen",
+    image: "https://images.pexels.com/photos/5217124/pexels-photo-5217124.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/unrecognizable-man-hands-assembling-baby-cot-5217124/",
+  },
+  {
+    caption: "Montagem de móvel em uma casa nova",
+    image: "https://images.pexels.com/photos/4554417/pexels-photo-4554417.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/person-in-gray-long-sleeve-shirt-holding-black-smartphone-4554417/",
+  },
+  {
+    caption: "Montagem de mesa em casa",
+    image: "https://images.pexels.com/photos/4554421/pexels-photo-4554421.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/woman-in-white-crew-neck-t-shirt-holding-red-and-white-plastic-toy-4554421/",
+  },
+  {
+    caption: "Montagem de mesa durante a mudança",
+    image: "https://images.pexels.com/photos/4554420/pexels-photo-4554420.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/man-in-gray-hoodie-using-black-tablet-computer-4554420/",
+  },
+  {
+    caption: "Montagem de banco de madeira",
+    image: "https://images.pexels.com/photos/31755424/pexels-photo-31755424.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/close-up-of-hands-assembling-wooden-furniture-31755424/",
+  },
+  {
+    caption: "Montagem de mesa de centro",
+    image: "https://images.pexels.com/photos/4554425/pexels-photo-4554425.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/woman-in-white-long-sleeve-shirt-and-black-pants-sitting-on-floor-4554425/",
+  },
+  {
+    caption: "Montagem de mesa em uma casa nova",
+    image: "https://images.pexels.com/photos/4554429/pexels-photo-4554429.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/woman-in-white-long-sleeve-shirt-sitting-on-gray-couch-4554429/",
+  },
+  {
+    caption: "Montagem de berço com ferramentas",
+    image: "https://images.pexels.com/photos/7491417/pexels-photo-7491417.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/a-man-setting-up-the-crib-7491417/",
+  },
+];
 const bookingFields = "id,customer_name,customer_phone,customer_email,service,details,booking_date,booking_time,duration_minutes,status";
 let visibleMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let selectedDate = dateToISO(new Date());
@@ -112,6 +164,102 @@ function formatDuration(minutes) {
   const remainingMinutes = minutes % 60;
   if (!hours) return `${remainingMinutes} min`;
   return remainingMinutes ? `${hours}h ${remainingMinutes}min` : `${hours}h`;
+}
+
+function setupHeroCarousel() {
+  const image = document.querySelector("#hero-carousel-image");
+  const caption = document.querySelector("#carousel-caption");
+  const source = document.querySelector("#photo-credit");
+  const dots = document.querySelector("#carousel-dots");
+  const counter = document.querySelector("#carousel-counter");
+  const toggle = document.querySelector("#carousel-toggle");
+  if (!image || !caption || !source || !dots || !counter || !toggle) return;
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let currentIndex = 0;
+  let timer;
+  let paused = reducedMotion.matches;
+  let hovering = false;
+  let focused = false;
+
+  function stopTimer() {
+    window.clearInterval(timer);
+    timer = undefined;
+  }
+
+  function startTimer() {
+    stopTimer();
+    if (paused || hovering || focused || document.hidden || heroPhotos.length < 2) return;
+    timer = window.setInterval(() => showPhoto(currentIndex + 1), 6000);
+  }
+
+  function showPhoto(index) {
+    currentIndex = (index + heroPhotos.length) % heroPhotos.length;
+    const photo = heroPhotos[currentIndex];
+    image.src = photo.image;
+    image.alt = photo.caption;
+    caption.textContent = photo.caption;
+    source.href = photo.source;
+    counter.textContent = `${String(currentIndex + 1).padStart(2, "0")} / ${String(heroPhotos.length).padStart(2, "0")}`;
+    for (const [dotIndex, dot] of [...dots.children].entries()) {
+      dot.setAttribute("aria-pressed", String(dotIndex === currentIndex));
+    }
+    if (currentIndex + 1 < heroPhotos.length) {
+      const nextImage = new Image();
+      nextImage.src = heroPhotos[currentIndex + 1].image;
+    }
+    startTimer();
+  }
+
+  for (const [index, photo] of heroPhotos.entries()) {
+    const dot = document.createElement("button");
+    dot.className = "carousel-dot";
+    dot.type = "button";
+    dot.setAttribute("aria-label", `Mostrar foto ${index + 1}: ${photo.caption}`);
+    dot.setAttribute("aria-pressed", String(index === currentIndex));
+    dot.addEventListener("click", () => showPhoto(index));
+    dots.append(dot);
+  }
+
+  document.querySelector("#carousel-previous").addEventListener("click", () => showPhoto(currentIndex - 1));
+  document.querySelector("#carousel-next").addEventListener("click", () => showPhoto(currentIndex + 1));
+  toggle.addEventListener("click", () => {
+    paused = !paused;
+    toggle.textContent = paused ? "▶" : "Ⅱ";
+    toggle.setAttribute("aria-label", paused ? "Iniciar carrossel" : "Pausar carrossel");
+    startTimer();
+  });
+  image.addEventListener("error", () => {
+    console.error(`Não foi possível carregar a foto do carrossel: ${image.src}`);
+  });
+
+  const carousel = image.closest(".hero-carousel");
+  carousel.addEventListener("mouseenter", () => {
+    hovering = true;
+    stopTimer();
+  });
+  carousel.addEventListener("mouseleave", () => {
+    hovering = false;
+    startTimer();
+  });
+  carousel.addEventListener("focusin", () => {
+    focused = true;
+    stopTimer();
+  });
+  carousel.addEventListener("focusout", (event) => {
+    if (!carousel.contains(event.relatedTarget)) {
+      focused = false;
+      startTimer();
+    }
+  });
+  document.addEventListener("visibilitychange", startTimer);
+  reducedMotion.addEventListener("change", (event) => {
+    paused = event.matches;
+    toggle.textContent = paused ? "▶" : "Ⅱ";
+    toggle.setAttribute("aria-label", paused ? "Iniciar carrossel" : "Pausar carrossel");
+    startTimer();
+  });
+  showPhoto(0);
 }
 
 async function loadAvailableSlots(date, service) {
@@ -595,6 +743,7 @@ document.querySelector("#save-durations-button")?.addEventListener("click", (eve
   void saveServiceDurations(event.currentTarget);
 });
 setupContactLinks();
+setupHeroCarousel();
 setBookingAvailability(supabaseReady);
 window.addEventListener("hashchange", routeToAdmin);
 routeToAdmin();

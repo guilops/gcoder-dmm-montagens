@@ -32,10 +32,17 @@
         <p class="hero-intro">Montagem, desmontagem e instalação de móveis. Serviço direto, combinado com você e feito por montadores.</p>
         <div class="hero-actions"><a class="button button-dark" href="#agendamento">Consultar horário <span aria-hidden="true">↗</span></a><a class="text-link" data-whatsapp href="#agendamento">Chamar no WhatsApp <span aria-hidden="true">↗</span></a></div>
       </div>
-      <div class="hero-visual">
-        <img class="hero-image" src="https://images.unsplash.com/photo-1772338537689-056082f100a9?auto=format&amp;fit=crop&amp;w=1200&amp;q=85" alt="Pessoa usando uma parafusadeira para montar um móvel">
-        <div class="hero-image-label"><span class="label-icon" aria-hidden="true">⌂</span><span><strong>Montagem e desmontagem</strong><small>Atendimento residencial</small></span></div>
-        <a class="photo-credit" href="https://unsplash.com/photos/person-using-screwdriver-to-attach-metal-bracket-to-white-surface-nvY2UmZI_Vg" target="_blank" rel="noopener noreferrer">Foto: Sleepline / Unsplash</a>
+      <div class="hero-visual hero-carousel" role="region" aria-roledescription="carrossel" aria-label="Fotos ilustrativas de montagem de móveis">
+        <img class="hero-image" id="hero-carousel-image" src="https://images.pexels.com/photos/5805491/pexels-photo-5805491.jpeg?auto=compress&amp;cs=tinysrgb&amp;w=1200" alt="Ferramentas e instruções para montar um móvel" fetchpriority="high">
+        <div class="hero-image-label"><span class="label-icon" aria-hidden="true">⌂</span><span><strong id="carousel-caption">Ferramentas e instruções para montar um móvel</strong><small>Fotos ilustrativas de montagem</small></span></div>
+        <a class="photo-credit" id="photo-credit" href="https://www.pexels.com/photo/tools-and-paper-instruction-for-furniture-assembly-5805491/" target="_blank" rel="noopener noreferrer">Ver foto no Pexels</a>
+        <div class="carousel-controls" aria-label="Controles do carrossel">
+          <button class="carousel-arrow" id="carousel-previous" type="button" aria-label="Foto anterior">←</button>
+          <div class="carousel-dots" id="carousel-dots" role="group" aria-label="Escolher foto"></div>
+          <button class="carousel-arrow" id="carousel-next" type="button" aria-label="Próxima foto">→</button>
+          <button class="carousel-toggle" id="carousel-toggle" type="button" aria-label="Pausar carrossel">Ⅱ</button>
+          <span class="carousel-counter" id="carousel-counter" aria-live="polite">01 / 10</span>
+        </div>
       </div>
       <div class="scroll-cue"><span></span> SERVIÇO DIRETO, SEM COMPLICAÇÃO</div>
     </section>

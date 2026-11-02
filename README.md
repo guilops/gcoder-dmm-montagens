@@ -13,7 +13,7 @@ Site responsivo de apresentação e agendamento, com painel de administração. 
 
 ## Antes de publicar
 
-Os contatos, as fotos de trabalhos reais, os bairros e a integração dependem de informações da DMM Montagens. A página usa uma foto ilustrativa de montagem com crédito ao autor; substituir pela foto real da equipe deixa a divulgação ainda mais autêntica. Preencha [config.js](./config.js) com o telefone WhatsApp em formato internacional só com números (por exemplo `5511999999999`), o e-mail público e a área atendida.
+Os contatos, as fotos de trabalhos reais, os bairros e a integração dependem de informações da DMM Montagens. O carrossel usa 10 fotos ilustrativas do Pexels, com links para as fontes; elas mostram exemplos de montagem, não trabalhos realizados pela equipe. Trocar por fotos próprias deixa a divulgação mais autêntica. Preencha [config.js](./config.js) com o telefone WhatsApp em formato internacional só com números (por exemplo `5511999999999`), o e-mail público e a área atendida.
 
 Não publique informações de conexão inventadas nem coloque a chave **service role** do Supabase no site. O site recebe somente a URL do projeto e a chave pública **anon/publishable**; a chave privada fica nos segredos das Edge Functions.
 
