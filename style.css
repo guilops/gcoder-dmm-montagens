@@ -200,6 +200,7 @@ h1 em, h2 em { color: var(--green); font-family: var(--serif); font-weight: 400;
 .dashboard { padding-top: 53px; }
 .dashboard[hidden], .admin-login[hidden] { display: none; }
 .dashboard-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.dashboard-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .dashboard-heading > div > p:not(.eyebrow) { margin-bottom: 0; }
 .button-outline { border: 1px solid #d9ddd3; background: transparent; color: var(--green); }
 .button-outline:hover { background: #eaede6; }
@@ -272,7 +273,7 @@ h1 em, h2 em { color: var(--green); font-family: var(--serif); font-weight: 400;
   .booking { grid-template-columns: 1fr; gap: 30px; }.booking-contact { margin-top: 25px; }.booking-form { gap: 12px; padding: 17px; }.form-row { gap: 9px; }.booking-form input, .booking-form select { padding: 9px 8px; font-size: 9px; }
   .area-strip .section-wrap { display: grid; grid-template-columns: 24px 1fr; gap: 6px 9px; }.area-pin { grid-row: span 2; }.area-strip strong { margin: 0; }.area-strip a { grid-column: 2; }
   .footer-main { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 8px; }.footer-main nav { grid-column: 1 / -1; justify-content: space-between; gap: 8px; font-size: 8px; }.footer-social { justify-content: end; font-size: 8px; }.footer-bottom { gap: 10px; font-size: 7px; }.footer-bottom > a { margin-left: auto; }
-  .admin-panel { width: calc(100% - 28px); }.admin-login { margin: 70px auto; }.admin-login h1 { font-size: 39px; }.dashboard { padding-top: 32px; }.dashboard-heading { align-items: flex-start; }.dashboard-heading .button { min-height: 36px; padding-inline: 10px; font-size: 9px; }.dashboard h1 { font-size: 35px; }.dashboard-stats { gap: 6px; }.dashboard-stats article { padding: 10px 7px; }.dashboard-stats article > span { font-size: 7px; }.dashboard-stats strong { font-size: 25px; }.dashboard-stats small { font-size: 7px; }
+  .admin-panel { width: calc(100% - 28px); }.admin-login { margin: 70px auto; }.admin-login h1 { font-size: 39px; }.dashboard { padding-top: 32px; }.dashboard-heading { align-items: flex-start; }.dashboard-actions { justify-content: flex-end; }.dashboard-heading .button { min-height: 36px; padding-inline: 10px; font-size: 9px; }.dashboard h1 { font-size: 35px; }.dashboard-stats { gap: 6px; }.dashboard-stats article { padding: 10px 7px; }.dashboard-stats article > span { font-size: 7px; }.dashboard-stats strong { font-size: 25px; }.dashboard-stats small { font-size: 7px; }
   .calendar-cell { min-height: 54px; padding: 6px 4px; }.calendar-cell.weekday { min-height: 24px; font-size: 7px; }.calendar-date { font-size: 9px; }.calendar-booking-count { font-size: 7px; }.calendar-heading { gap: 8px; }.calendar-heading h2 { min-width: 139px; font-size: 13px; }
   .admin-booking { grid-template-columns: 48px 1fr auto; gap: 8px; padding: 11px 8px; }.admin-booking-contact { grid-column: 2; }.admin-booking-actions { grid-column: 3; grid-row: 1 / span 2; }.admin-booking-time { font-size: 11px; }.admin-booking-main strong { font-size: 9px; }.admin-booking-main small, .admin-booking-contact small, .admin-booking-contact { font-size: 8px; }
 }
@@ -284,8 +285,10 @@ h1 em, h2 em { color: var(--green); font-family: var(--serif); font-weight: 400;
 .schedule-controls { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin: 20px 0; }
 .week-export-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; margin-top: 16px; }
 .week-export-row p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.schedule-help { margin: 18px 0 -12px; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .schedule-controls label { display: grid; gap: 6px; color: var(--muted); font-size: 9px; font-weight: 700; }
 .schedule-controls select { min-height: 40px; padding: 8px; border: 1px solid var(--line); background: var(--white); color: var(--ink); }
+.schedule-controls :disabled { cursor: not-allowed; opacity: .55; }
 .schedule-block { grid-template-columns: 90px 1fr auto; }
 .schedule-block .button { min-height: 34px; padding-inline: 12px; }
 .duration-settings { display: grid; gap: 16px; margin-top: 30px; padding: 22px; border: 1px solid var(--line); background: #faf9f4; }

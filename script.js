@@ -37,9 +37,9 @@ const services = [
 ];
 const heroPhotos = [
   {
-    caption: "Trabalhador e ferramentas em uma cozinha em reforma",
-    image: "https://images.pexels.com/photos/15124970/pexels-photo-15124970.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    source: "https://www.pexels.com/photo/men-working-inside-a-house-under-repairs-15124970/",
+    caption: "Montador conferindo o alinhamento com nível",
+    image: "https://images.pexels.com/photos/8470044/pexels-photo-8470044.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/a-man-in-black-long-sleeves-checking-the-white-wall-using-spirit-level-8470044/",
   },
   {
     caption: "Carpinteiro usando furadeira em uma peça de madeira",
@@ -67,9 +67,9 @@ const heroPhotos = [
     source: "https://www.pexels.com/photo/unrecognizable-man-drilling-hole-in-wooden-blank-5974382/",
   },
   {
-    caption: "Ajuste de uma peça de madeira com furadeira",
-    image: "https://images.pexels.com/photos/5974236/pexels-photo-5974236.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    source: "https://www.pexels.com/photo/man-drilling-wooden-piece-of-detail-with-screwdriver-5974236/",
+    caption: "Montador medindo uma peça antes da montagem",
+    image: "https://images.pexels.com/photos/5973888/pexels-photo-5973888.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/crop-man-using-measuring-tape-in-workshop-5973888/",
   },
   {
     caption: "Carpinteiro usando furadeira em uma bancada",
@@ -77,9 +77,9 @@ const heroPhotos = [
     source: "https://www.pexels.com/photo/crop-man-drilling-holes-in-wooden-plank-5974049/",
   },
   {
-    caption: "Montagem de madeira com ferramentas de trabalho",
-    image: "https://images.pexels.com/photos/7285914/pexels-photo-7285914.jpeg?auto=compress&cs=tinysrgb&w=1200",
-    source: "https://www.pexels.com/photo/a-close-up-shot-of-a-person-doing-woodworks-7285914/",
+    caption: "Carpinteiro martelando um prego durante o trabalho",
+    image: "https://images.pexels.com/photos/5974413/pexels-photo-5974413.jpeg?auto=compress&cs=tinysrgb&w=1200",
+    source: "https://www.pexels.com/photo/focused-ethnic-male-carpenter-hammering-nail-into-wooden-detail-in-workshop-5974413/",
   },
   {
     caption: "Carpinteiro instalando uma dobradiça em madeira",
@@ -415,6 +415,7 @@ function renderBookingList() {
     bookingList.append(card);
   }
   const dayBlocks = monthBlocks.filter((block) => block.blocked_date === selectedDate);
+  updateScheduleControls(dayBlocks);
   for (const block of dayBlocks) {
     const card = document.createElement("article");
     card.className = "admin-booking schedule-block";
@@ -446,6 +447,41 @@ function escapeICalendarText(value) {
     .replace(/\r\n|\r|\n/g, "\\n")
     .replace(/,/g, "\\,")
     .replace(/;/g, "\\;");
+}
+
+function scheduleBlockConflicts(startTime, durationMinutes, blocks) {
+  if (!startTime) return blocks.length > 0;
+  const start = timeToMinutes(startTime);
+  const end = start + durationMinutes;
+  return blocks.some((block) =>
+    block.start_time === null ||
+    (start < timeToMinutes(block.end_time) && end > timeToMinutes(block.start_time))
+  );
+}
+
+function updateScheduleControls(dayBlocks) {
+  const dayButton = document.querySelector("#block-day-button");
+  const startSelect = document.querySelector("#block-time");
+  const durationSelect = document.querySelector("#block-duration");
+  const timeButton = document.querySelector("#block-time-button");
+  if (!dayButton || !startSelect || !durationSelect || !timeButton) return;
+
+  const wholeDayBlocked = dayBlocks.some((block) => block.start_time === null);
+  const selectedStart = startSelect.value;
+  const duration = Number(durationSelect.value);
+  const selectedPeriodBlocked = selectedStart &&
+    (timeToMinutes(selectedStart) + duration > 18 * 60 ||
+      scheduleBlockConflicts(selectedStart, duration, dayBlocks));
+  dayButton.disabled = dayBlocks.length > 0;
+  startSelect.disabled = wholeDayBlocked;
+  durationSelect.disabled = wholeDayBlocked;
+  timeButton.disabled = wholeDayBlocked || !selectedStart || selectedPeriodBlocked;
+  dayButton.title = dayBlocks.length
+    ? "Libere os bloqueios existentes antes de bloquear o dia todo."
+    : "";
+  timeButton.title = selectedPeriodBlocked
+    ? "Esse período já está bloqueado ou termina depois das 18h."
+    : "";
 }
 
 function foldICalendarLine(line) {
@@ -546,20 +582,46 @@ async function addScheduleBlock(startTime = null, durationMinutes = 90) {
     showToast("O bloqueio precisa terminar até 18h. Escolha um período menor.");
     return;
   }
+  const dayButton = document.querySelector("#block-day-button");
+  const timeButton = document.querySelector("#block-time-button");
+  const startSelect = document.querySelector("#block-time");
+  const durationSelect = document.querySelector("#block-duration");
+  dayButton.disabled = true;
+  timeButton.disabled = true;
+  startSelect.disabled = true;
+  durationSelect.disabled = true;
+
   const endTime = startTime
     ? `${String(Math.floor((timeToMinutes(startTime) + durationMinutes) / 60)).padStart(2, "0")}:${String((timeToMinutes(startTime) + durationMinutes) % 60).padStart(2, "0")}`
     : null;
-  const { error } = await db.from("schedule_blocks").insert({
-    blocked_date: selectedDate,
-    start_time: startTime,
-    end_time: endTime,
-  });
-  if (error) {
-    showToast(`Não foi possível bloquear esse período: ${error.message}`);
-    return;
+  try {
+    const { data: existingBlocks, error: blocksError } = await db.from("schedule_blocks")
+      .select("start_time,end_time")
+      .eq("blocked_date", selectedDate);
+    if (blocksError) {
+      showToast(`Não foi possível verificar os bloqueios existentes: ${blocksError.message}`);
+      return;
+    }
+    if (scheduleBlockConflicts(startTime, durationMinutes, existingBlocks)) {
+      showToast("Esse dia ou horário já está bloqueado. Libere o bloqueio existente ou escolha outro período.");
+      await refreshDashboard();
+      return;
+    }
+
+    const { error } = await db.from("schedule_blocks").insert({
+      blocked_date: selectedDate,
+      start_time: startTime,
+      end_time: endTime,
+    });
+    if (error) {
+      showToast(`Não foi possível bloquear esse período: ${error.message}`);
+      return;
+    }
+    showToast(startTime ? `Horário bloqueado por ${formatDuration(durationMinutes)}.` : "Dia bloqueado.");
+    await refreshDashboard();
+  } finally {
+    updateScheduleControls(monthBlocks.filter((block) => block.blocked_date === selectedDate));
   }
-  showToast(startTime ? `Horário bloqueado por ${formatDuration(durationMinutes)}.` : "Dia bloqueado.");
-  await refreshDashboard();
 }
 
 function timeToMinutes(value) {
@@ -845,6 +907,12 @@ document.querySelector("#export-week-button")?.addEventListener("click", (event)
   void exportConfirmedWeek(event.currentTarget);
 });
 document.querySelector("#block-day-button")?.addEventListener("click", () => void addScheduleBlock());
+document.querySelector("#block-time")?.addEventListener("change", () => {
+  updateScheduleControls(monthBlocks.filter((block) => block.blocked_date === selectedDate));
+});
+document.querySelector("#block-duration")?.addEventListener("change", () => {
+  updateScheduleControls(monthBlocks.filter((block) => block.blocked_date === selectedDate));
+});
 document.querySelector("#block-time-button")?.addEventListener("click", () => {
   const select = document.querySelector("#block-time");
   if (!select.value) {
